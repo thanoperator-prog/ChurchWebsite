@@ -1,0 +1,1973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Elect Word Ministry</title>
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="EWM Church">
+    <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1438232992991-995b7058bbb3?w=192&h=192&fit=crop">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        /* Smooth scrolling and font adjustments */
+        html { scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
+
+    <!-- Application Logic -->
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useMemo } from 'https://esm.sh/react@18.2.0';
+        import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
+        import { 
+            Users, Calendar, DollarSign, Video, Settings, Menu, X, Bell, Search, 
+            ChevronRight, ArrowUpRight, ArrowDownRight, Heart, UserPlus, BookOpen, 
+            MapPin, Clock, Phone, Mail, Facebook, Instagram, Youtube, PlayCircle, 
+            ArrowRight, LogOut, Trash2, Edit, Plus, Briefcase, TrendingUp, 
+            TrendingDown, Lock, AlertCircle, FileText, PieChart, Filter, 
+            BarChart3, MessageCircle, CheckCircle, Map, Repeat, ChevronLeft, 
+            MoreVertical, Timer, UserCheck
+        } from 'https://esm.sh/lucide-react@0.292.0';
+
+        // --- COPY OF THE REACT COMPONENT CODE STARTS HERE ---
+        
+        // 1. SHARED UTILITIES & MODALS
+        const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 scale-100 animate-in zoom-in-95 duration-200">
+                    <div className="flex items-center gap-3 text-red-600 mb-4">
+                    <div className="bg-red-100 p-2 rounded-full">
+                        <AlertCircle size={24} />
+                    </div>
+                    <h3 className="font-bold text-lg">{title}</h3>
+                    </div>
+                    <p className="text-slate-600 mb-6 text-sm leading-relaxed">{message}</p>
+                    <div className="flex justify-end gap-3">
+                    <button onClick={onCancel} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium text-sm transition-colors">Cancel</button>
+                    <button onClick={onConfirm} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium text-sm transition-colors shadow-sm">Yes, Delete</button>
+                    </div>
+                </div>
+                </div>
+            );
+        };
+
+        const ViewRegistrationsModal = ({ isOpen, onClose, event, registrations }) => {
+            if (!isOpen || !event) return null;
+            const eventRegistrations = registrations ? registrations.filter(r => r.eventId === event.id) : [];
+
+            return (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 relative flex flex-col max-h-[80vh]">
+                    <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                        <div>
+                            <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                            <Users size={20} className="text-blue-600" /> Event Registrations
+                            </h3>
+                            <p className="text-sm text-slate-500 mt-1">for <span className="font-semibold text-blue-600">{event.title}</span></p>
+                        </div>
+                        <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+                    </div>
+                    <div className="overflow-y-auto flex-1">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-50 text-slate-500 font-medium sticky top-0">
+                            <tr>
+                                <th className="px-4 py-3">Name</th>
+                                <th className="px-4 py-3">Contact</th>
+                                <th className="px-4 py-3 text-right">Registered At</th>
+                            </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                            {eventRegistrations.map(reg => (
+                                <tr key={reg.id} className="hover:bg-slate-50">
+                                    <td className="px-4 py-3 font-medium text-slate-800">{reg.visitorName}</td>
+                                    <td className="px-4 py-3 text-slate-600">{reg.visitorContact}</td>
+                                    <td className="px-4 py-3 text-slate-500 text-right text-xs">
+                                        {new Date(reg.timestamp).toLocaleDateString()} <span className="text-slate-300">|</span> {new Date(reg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                    </td>
+                                </tr>
+                            ))}
+                            {eventRegistrations.length === 0 && (
+                                <tr><td colSpan="3" className="px-4 py-12 text-center text-slate-400 italic">No registrations found for this event.</td></tr>
+                            )}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="mt-6 pt-4 border-t border-slate-100 flex justify-between items-center">
+                        <span className="text-xs text-slate-400 font-medium">Total: {eventRegistrations.length}</span>
+                        <button onClick={onClose} className="px-6 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 font-medium text-sm transition-colors">Close</button>
+                    </div>
+                </div>
+                </div>
+            )
+        }
+
+        const EventRegistrationModal = ({ isOpen, onClose, event, onRegister }) => {
+            const [formData, setFormData] = useState({ name: '', contact: '' });
+            const [isSubmitting, setIsSubmitting] = useState(false);
+
+            if (!isOpen || !event) return null;
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                setIsSubmitting(true);
+                setTimeout(() => {
+                    onRegister({
+                        id: Date.now(),
+                        eventId: event.id,
+                        eventTitle: event.title,
+                        visitorName: formData.name,
+                        visitorContact: formData.contact,
+                        timestamp: Date.now()
+                    });
+                    setIsSubmitting(false);
+                    setFormData({ name: '', contact: '' });
+                    onClose();
+                }, 800);
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 scale-100 animate-in zoom-in-95 duration-200 relative">
+                    <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                    <X size={20} />
+                    </button>
+                    
+                    <div className="mb-6">
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mb-4">
+                        <UserCheck size={24} />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-800">Register Interest</h3>
+                    <p className="text-slate-500 text-sm mt-1">
+                        Let us know you're coming to <span className="font-semibold text-blue-600">{event.title}</span>!
+                    </p>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Your Name</label>
+                        <input 
+                        type="text" 
+                        required
+                        className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        placeholder="John Doe"
+                        value={formData.name}
+                        onChange={e => setFormData({...formData, name: e.target.value})}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Contact Number / Email</label>
+                        <input 
+                        type="text" 
+                        required
+                        className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        placeholder="0917-XXX-XXXX or email@example.com"
+                        value={formData.contact}
+                        onChange={e => setFormData({...formData, contact: e.target.value})}
+                        />
+                    </div>
+                    
+                    <button 
+                        type="submit" 
+                        disabled={isSubmitting}
+                        className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-900/10 disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center"
+                    >
+                        {isSubmitting ? (
+                        <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        ) : "Confirm Registration"}
+                    </button>
+                    </form>
+                </div>
+                </div>
+            );
+        };
+
+        const SuccessToast = ({ message, onClose }) => {
+            useEffect(() => {
+                const timer = setTimeout(onClose, 3000);
+                return () => clearTimeout(timer);
+            }, [onClose]);
+
+            return (
+                <div className="fixed bottom-6 right-6 bg-slate-800 text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-3 animate-in slide-in-from-bottom-5 z-[80]">
+                <CheckCircle size={20} className="text-green-400" />
+                <span className="font-medium text-sm">{message}</span>
+                </div>
+            );
+        };
+
+        const EditTransactionModal = ({ isOpen, onClose, transaction, onSave }) => {
+            const [formData, setFormData] = useState({ amount: '', description: '', type: 'income' });
+
+            useEffect(() => {
+                if (transaction) {
+                setFormData({
+                    amount: transaction.amount || '',
+                    description: transaction.description || '',
+                    type: transaction.type || 'income'
+                });
+                }
+            }, [transaction]);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                onSave({ ...transaction, ...formData });
+                onClose();
+            };
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                    <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                        <Edit size={20} className="text-blue-600" /> Edit Transaction
+                    </h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+                    </div>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Transaction Type</label>
+                        <div className="flex bg-slate-100 p-1 rounded-lg">
+                        <button type="button" onClick={() => setFormData({...formData, type: 'income'})} className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${formData.type === 'income' ? 'bg-green-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Income</button>
+                        <button type="button" onClick={() => setFormData({...formData, type: 'expense'})} className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${formData.type === 'expense' ? 'bg-red-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Expense</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Amount (₱)</label>
+                        <input type="number" required className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="0.00" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
+                        <input type="text" required className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Description" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                    </div>
+                    <div className="flex justify-end gap-3 pt-4">
+                        <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">Cancel</button>
+                        <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm">Save Changes</button>
+                    </div>
+                    </form>
+                </div>
+                </div>
+            );
+        };
+
+        const EditEventModal = ({ isOpen, onClose, event, onSave }) => {
+            const [formData, setFormData] = useState({ 
+                title: '', startDate: '', endDate: '', time: '', location: '', recurrence: 'none' 
+            });
+
+            useEffect(() => {
+                if (event) {
+                setFormData({
+                    title: event.title || '',
+                    startDate: event.startDate || '',
+                    endDate: event.endDate || '', 
+                    time: event.time || '',
+                    location: event.location || '',
+                    recurrence: event.recurrence || 'none'
+                });
+                }
+            }, [event]);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                onSave({ ...event, ...formData });
+                onClose();
+            };
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                    <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                        <Edit size={20} className="text-blue-600" /> Edit Event
+                    </h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+                    </div>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Event Title</label>
+                        <input type="text" required className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Start Date</label>
+                        <input type="date" required className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" value={formData.startDate} onChange={e => setFormData({...formData, startDate: e.target.value})} />
+                        </div>
+                        <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">End Date</label>
+                        <input type="date" className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className="block text-xs font-medium text-slate-500 mb-1">Time</label>
+                            <input type="text" required className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-slate-500 mb-1">Recurrence</label>
+                            <select className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none" value={formData.recurrence} onChange={e => setFormData({...formData, recurrence: e.target.value})}>
+                            <option value="none">One-time</option>
+                            <option value="weekly">Weekly</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Location</label>
+                        <input type="text" required className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} />
+                    </div>
+                    <div className="flex justify-end gap-3 pt-4">
+                        <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">Cancel</button>
+                        <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm">Save Changes</button>
+                    </div>
+                    </form>
+                </div>
+                </div>
+            );
+        };
+
+        const ReportModal = ({ onClose, fundName, transactions }) => {
+            const [groupBy, setGroupBy] = useState('month'); 
+
+            const reportData = useMemo(() => {
+                const data = {};
+                let grandTotalIncome = 0;
+                let grandTotalExpense = 0;
+
+                transactions.forEach(t => {
+                const date = new Date(t.timestamp);
+                let key = '';
+                let displayDate = '';
+
+                if (groupBy === 'day') {
+                    key = date.toLocaleDateString('en-CA'); 
+                    displayDate = date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+                } else if (groupBy === 'week') {
+                    const day = date.getDay(); 
+                    const diff = date.getDate() - day; 
+                    const weekStart = new Date(date);
+                    weekStart.setDate(diff);
+                    key = weekStart.toISOString().split('T')[0];
+                    const weekEnd = new Date(weekStart);
+                    weekEnd.setDate(weekStart.getDate() + 6);
+                    const startStr = weekStart.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+                    const endStr = weekEnd.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+                    displayDate = `${startStr} - ${endStr}`;
+                } else { 
+                    key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    displayDate = date.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' });
+                }
+                
+                if (!data[key]) {
+                    data[key] = { income: 0, expense: 0, dateStr: key, displayDate };
+                }
+                
+                const amount = parseFloat(t.amount);
+                if (t.type === 'income') {
+                    data[key].income += amount;
+                    grandTotalIncome += amount;
+                }
+                if (t.type === 'expense') {
+                    data[key].expense += amount;
+                    grandTotalExpense += amount;
+                }
+                });
+
+                return {
+                rows: Object.values(data).sort((a, b) => b.dateStr.localeCompare(a.dateStr)),
+                summary: {
+                    income: grandTotalIncome,
+                    expense: grandTotalExpense,
+                    net: grandTotalIncome - grandTotalExpense
+                }
+                };
+            }, [transactions, groupBy]);
+
+            return (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-blue-100 p-2 rounded-lg text-blue-600"><BarChart3 size={24} /></div>
+                        <div>
+                        <h3 className="font-bold text-slate-800 text-lg">Financial Report</h3>
+                        <p className="text-sm text-slate-500">Fund: <span className="font-semibold text-blue-600">{fundName}</span></p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="flex bg-white border border-slate-200 rounded-lg p-1">
+                        <button onClick={() => setGroupBy('day')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${groupBy === 'day' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Daily</button>
+                        <button onClick={() => setGroupBy('week')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${groupBy === 'week' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Weekly</button>
+                        <button onClick={() => setGroupBy('month')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${groupBy === 'month' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Monthly</button>
+                        </div>
+                        <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X size={20} /></button>
+                    </div>
+                    </div>
+                    
+                    <div className="p-6 overflow-y-auto bg-slate-50/50">
+                    <div className="grid grid-cols-3 gap-4 mb-8">
+                        <div className="bg-white p-4 rounded-xl border border-green-100 shadow-sm">
+                        <p className="text-xs font-bold text-green-600 uppercase tracking-wider mb-1">Total Income</p>
+                        <p className="text-2xl font-bold text-slate-800">₱{reportData.summary.income.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl border border-red-100 shadow-sm">
+                        <p className="text-xs font-bold text-red-600 uppercase tracking-wider mb-1">Total Expenses</p>
+                        <p className="text-2xl font-bold text-slate-800">₱{reportData.summary.expense.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl border border-blue-100 shadow-sm">
+                        <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">Net Balance</p>
+                        <p className={`text-2xl font-bold ${reportData.summary.net >= 0 ? 'text-slate-800' : 'text-red-500'}`}>{reportData.summary.net >= 0 ? '+' : ''}₱{reportData.summary.net.toLocaleString()}</p>
+                        </div>
+                    </div>
+
+                    {reportData.rows.length > 0 ? (
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-50 text-slate-500 uppercase text-xs font-bold border-b border-slate-200">
+                            <tr>
+                                <th className="px-6 py-4">Period</th>
+                                <th className="px-6 py-4 text-right text-green-600">Income</th>
+                                <th className="px-6 py-4 text-right text-red-600">Expenses</th>
+                                <th className="px-6 py-4 text-right">Net Flow</th>
+                                <th className="px-6 py-4 w-32 text-center">Visual</th>
+                            </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                            {reportData.rows.map((row) => {
+                                const net = row.income - row.expense;
+                                const maxVal = Math.max(row.income, row.expense) || 1; 
+                                const incomePct = (row.income / maxVal) * 100;
+                                const expensePct = (row.expense / maxVal) * 100;
+
+                                return (
+                                <tr key={row.dateStr} className="hover:bg-slate-50 transition-colors">
+                                    <td className="px-6 py-4 font-bold text-slate-700 border-r border-slate-50">{row.displayDate}</td>
+                                    <td className="px-6 py-4 text-right font-mono text-slate-600">₱{row.income.toLocaleString()}</td>
+                                    <td className="px-6 py-4 text-right font-mono text-slate-600">₱{row.expense.toLocaleString()}</td>
+                                    <td className={`px-6 py-4 text-right font-bold font-mono ${net >= 0 ? 'text-blue-600' : 'text-red-500'}`}>{net >= 0 ? '+' : ''}₱{net.toLocaleString()}</td>
+                                    <td className="px-6 py-4">
+                                    <div className="flex flex-col gap-1 w-full h-8 justify-center">
+                                        {row.income > 0 && <div className="h-1.5 bg-green-400 rounded-full" style={{ width: `${incomePct}%` }}></div>}
+                                        {row.expense > 0 && <div className="h-1.5 bg-red-400 rounded-full" style={{ width: `${expensePct}%` }}></div>}
+                                    </div>
+                                    </td>
+                                </tr>
+                                );
+                            })}
+                            </tbody>
+                        </table>
+                        </div>
+                    ) : (
+                        <div className="text-center py-12 text-slate-400 bg-white rounded-xl border border-slate-200 border-dashed">
+                        <PieChart size={48} className="mx-auto mb-2 opacity-50" />
+                        <p>No transaction data found for this view.</p>
+                        </div>
+                    )}
+                    </div>
+                    
+                    <div className="p-4 border-t border-slate-100 bg-white text-right">
+                    <button onClick={onClose} className="px-6 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 font-medium transition-colors">Close Report</button>
+                    </div>
+                </div>
+                </div>
+            );
+        };
+
+        const CalendarWidget = ({ events }) => {
+            const [currentDate, setCurrentDate] = useState(new Date());
+
+            const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+            const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
+
+            const getDayEvents = (day) => {
+                const currentDayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+                
+                return events.filter(event => {
+                const startDate = new Date(event.startDate);
+                const endDate = new Date(event.endDate || event.startDate);
+                currentDayDate.setHours(0,0,0,0);
+                startDate.setHours(0,0,0,0);
+                endDate.setHours(0,0,0,0);
+                const isWithinRange = currentDayDate >= startDate && currentDayDate <= endDate;
+                if (event.recurrence === 'weekly') {
+                    return currentDayDate.getDay() === startDate.getDay() && currentDayDate >= startDate;
+                }
+                return isWithinRange;
+                });
+            };
+
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+            return (
+                <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm h-full flex flex-col">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="font-bold text-slate-800 text-xl">
+                    {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+                    </h3>
+                    <div className="flex gap-2">
+                    <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600"><ChevronLeft size={24} /></button>
+                    <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600"><ChevronRight size={24} /></button>
+                    </div>
+                </div>
+                
+                <div className="grid grid-cols-7 gap-px bg-slate-100 border border-slate-200 rounded-t-lg overflow-hidden">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    <div key={day} className="bg-slate-50 p-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wide">
+                        {day}
+                    </div>
+                    ))}
+                </div>
+                
+                <div className="grid grid-cols-7 gap-px bg-slate-200 border-x border-b border-slate-200 rounded-b-lg overflow-hidden flex-1 overflow-y-auto" style={{ minHeight: '500px' }}>
+                    {Array(firstDayOfMonth).fill(null).map((_, i) => <div key={`empty-${i}`} className="bg-white min-h-[120px]"></div>)}
+                    
+                    {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
+                    const dayEvents = getDayEvents(day);
+                    const isToday = new Date().getDate() === day && new Date().getMonth() === currentDate.getMonth() && new Date().getFullYear() === currentDate.getFullYear();
+                    
+                    return (
+                        <div key={day} className={`bg-white min-h-[120px] p-2 flex flex-col items-start transition-colors hover:bg-slate-50 relative ${isToday ? 'bg-blue-50/30' : ''}`}>
+                        <span className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full mb-1 ${isToday ? 'bg-blue-600 text-white shadow-md' : 'text-slate-700'}`}>{day}</span>
+                        <div className="flex flex-col w-full gap-1">
+                            {dayEvents.map((ev, idx) => (
+                            <div 
+                                key={idx} 
+                                className="w-full text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded truncate font-medium border border-blue-200" 
+                                title={ev.title} 
+                            >
+                                {ev.title}
+                            </div>
+                            ))}
+                        </div>
+                        </div>
+                    );
+                    })}
+                </div>
+                </div>
+            );
+        };
+
+        const AdminSidebarItem = ({ icon: Icon, label, active, onClick, collapsed }) => (
+            <button onClick={onClick} className={`flex items-center w-full p-3 mb-1 transition-all rounded-lg group ${active ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'} ${collapsed ? 'justify-center' : 'justify-start'}`}>
+                <Icon size={20} className={`${collapsed ? '' : 'mr-3'}`} />
+                {!collapsed && <span className="font-medium text-sm">{label}</span>}
+                {!collapsed && active && <div className="ml-auto w-1.5 h-1.5 bg-white rounded-full opacity-50" />}
+            </button>
+        );
+
+        const AdminStatCard = ({ title, value, change, isPositive, icon: Icon, color }) => (
+            <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start mb-4">
+                <div className={`p-3 rounded-lg ${color}`}><Icon size={22} /></div>
+                <div className={`flex items-center text-xs font-semibold px-2 py-1 rounded-full ${isPositive ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                    {isPositive ? <ArrowUpRight size={14} className="mr-1" /> : <ArrowDownRight size={14} className="mr-1" />}{change}
+                </div>
+                </div>
+                <h3 className="text-slate-500 text-sm font-medium mb-1">{title}</h3>
+                <p className="text-2xl font-bold text-slate-800">{value}</p>
+            </div>
+        );
+
+        const CongregationManager = ({ members, onAddMember }) => {
+            const [isAdding, setIsAdding] = useState(false);
+            const [newMember, setNewMember] = useState({ name: '', role: 'Member', contact: '' });
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                onAddMember({ ...newMember, id: Date.now() });
+                setNewMember({ name: '', role: 'Member', contact: '' });
+                setIsAdding(false);
+            };
+
+            return (
+                <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-slate-800">Church Members</h2>
+                    <button onClick={() => setIsAdding(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-700 transition-colors">
+                    <UserPlus size={16} /> Add Member
+                    </button>
+                </div>
+
+                {isAdding && (
+                    <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 animate-in fade-in slide-in-from-top-4">
+                    <h3 className="font-bold text-slate-800 mb-4">New Member Details</h3>
+                    <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input type="text" placeholder="Full Name" required className="px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none" value={newMember.name} onChange={e => setNewMember({...newMember, name: e.target.value})} />
+                        <select className="px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none" value={newMember.role} onChange={e => setNewMember({...newMember, role: e.target.value})}>
+                        <option value="Member">Member</option>
+                        <option value="Deacon">Deacon</option>
+                        <option value="Elder">Elder</option>
+                        <option value="Worship Team">Worship Team</option>
+                        <option value="Usher">Usher</option>
+                        <option value="Youth">Youth</option>
+                        </select>
+                        <input type="text" placeholder="Contact (Email/Phone)" className="px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none" value={newMember.contact} onChange={e => setNewMember({...newMember, contact: e.target.value})} />
+                        <div className="md:col-span-3 flex justify-end gap-2 mt-2">
+                        <button type="button" onClick={() => setIsAdding(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg">Cancel</button>
+                        <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Member</button>
+                        </div>
+                    </form>
+                    </div>
+                )}
+
+                <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                    <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 text-slate-500 font-medium">
+                        <tr>
+                        <th className="px-6 py-4">Name</th>
+                        <th className="px-6 py-4">Role</th>
+                        <th className="px-6 py-4">Contact</th>
+                        <th className="px-6 py-4">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {members.map((member) => (
+                        <tr key={member.id} className="hover:bg-slate-50">
+                            <td className="px-6 py-4 font-medium text-slate-800">{member.name}</td>
+                            <td className="px-6 py-4"><span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-semibold">{member.role}</span></td>
+                            <td className="px-6 py-4 text-slate-500">{member.contact}</td>
+                            <td className="px-6 py-4"><span className="text-green-600 text-xs font-bold">● Active</span></td>
+                        </tr>
+                        ))}
+                        {members.length === 0 && (
+                        <tr>
+                            <td colSpan="4" className="px-6 py-8 text-center text-slate-500">No members found. Add one above!</td>
+                        </tr>
+                        )}
+                    </tbody>
+                    </table>
+                </div>
+                </div>
+            );
+        };
+
+        const FundsManager = ({ transactions, onAddTransaction, onUpdateTransaction, onDeleteTransaction, currentUser }) => {
+            const [activeFundTab, setActiveFundTab] = useState('');
+            const [newTrans, setNewTrans] = useState({ amount: '', description: '', type: 'income' });
+            const [showReport, setShowReport] = useState(false);
+            const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+            const [filterRange, setFilterRange] = useState('all'); 
+            const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+            const [transactionToEdit, setTransactionToEdit] = useState(null);
+
+            const allFunds = [
+                { id: 'offering', label: 'General Offering', allowedRoles: ['Pastor', 'Admin', 'Church Treasurer'] },
+                { id: 'youth', label: 'Youth Fund', allowedRoles: ['Pastor', 'Admin', 'Youth Treasurer'] },
+                { id: 'womens', label: "Women's Fund", allowedRoles: ['Pastor', 'Admin', "Women's Treasurer"] },
+                { id: 'mens', label: "Men's Fund", allowedRoles: ['Pastor', 'Admin', "Men's Treasurer"] },
+            ];
+
+            const visibleFunds = allFunds.filter(fund => fund.allowedRoles.includes(currentUser.role));
+
+            useEffect(() => {
+                if (visibleFunds.length > 0 && !activeFundTab) {
+                setActiveFundTab(visibleFunds[0].id);
+                }
+            }, [visibleFunds, activeFundTab]);
+
+            const handleTransactionSubmit = (e) => {
+                e.preventDefault();
+                if (!newTrans.amount || !newTrans.description) return;
+                
+                onAddTransaction({
+                ...newTrans,
+                id: Date.now(), 
+                fundId: activeFundTab,
+                date: new Date().toLocaleDateString('en-PH'),
+                timestamp: Date.now()
+                });
+                setNewTrans({ amount: '', description: '', type: 'income' });
+            };
+
+            const openEditModal = (trans) => {
+                setTransactionToEdit(trans);
+                setIsEditModalOpen(true);
+            };
+
+            const handleSaveEdit = (updatedTrans) => {
+                onUpdateTransaction(updatedTrans);
+            };
+
+            const handleDeleteClick = (id) => setDeleteConfirmId(id);
+
+            const confirmDelete = () => {
+                if (deleteConfirmId) {
+                onDeleteTransaction(deleteConfirmId);
+                setDeleteConfirmId(null);
+                }
+            };
+
+            if (visibleFunds.length === 0) {
+                return <div className="p-8 text-center text-slate-500">You do not have permission to view any funds.</div>;
+            }
+
+            const getFilteredTransactions = () => {
+                const fundTransactions = transactions.filter(t => t.fundId === activeFundTab);
+                const now = new Date();
+                
+                return fundTransactions.filter(t => {
+                if (filterRange === 'all') return true;
+                const txDate = new Date(t.timestamp);
+                if (filterRange === 'week') {
+                    const oneWeekAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+                    return txDate >= oneWeekAgo;
+                }
+                if (filterRange === 'month') return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear();
+                if (filterRange === 'year') return txDate.getFullYear() === now.getFullYear();
+                return true;
+                });
+            };
+
+            const filteredTransactions = getFilteredTransactions();
+            const allFundTransactions = transactions.filter(t => t.fundId === activeFundTab);
+            const totalIncome = allFundTransactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + parseFloat(curr.amount), 0);
+            const totalExpense = allFundTransactions.filter(t => t.type === 'expense').reduce((acc, curr) => acc + parseFloat(curr.amount), 0);
+            const balance = totalIncome - totalExpense;
+            const activeFundLabel = visibleFunds.find(f => f.id === activeFundTab)?.label || 'Fund';
+
+            return (
+                <div className="space-y-6">
+                <EditTransactionModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} transaction={transactionToEdit} onSave={handleSaveEdit} />
+                {showReport && <ReportModal onClose={() => setShowReport(false)} fundName={activeFundLabel} transactions={allFundTransactions} />}
+                <ConfirmationModal isOpen={!!deleteConfirmId} title="Delete Transaction?" message="Are you sure you want to delete this transaction record? This action cannot be undone." onConfirm={confirmDelete} onCancel={() => setDeleteConfirmId(null)} />
+
+                <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
+                    {visibleFunds.map(fund => (
+                    <button key={fund.id} onClick={() => { setActiveFundTab(fund.id); }} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeFundTab === fund.id ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-100'}`}>
+                        {fund.label}
+                    </button>
+                    ))}
+                </div>
+
+                <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between">
+                    <div>
+                    <p className="text-slate-500 text-sm font-medium uppercase tracking-wider">Current Balance</p>
+                    <div className="flex items-center gap-4">
+                        <h2 className={`text-4xl font-bold mt-1 ${balance >= 0 ? 'text-slate-800' : 'text-red-600'}`}>₱{balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h2>
+                        <button onClick={() => setShowReport(true)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"><FileText size={16} /> View Report</button>
+                    </div>
+                    </div>
+                    <div className="flex gap-4">
+                    <div className="text-right"><p className="text-xs text-slate-400 uppercase">Total Income</p><p className="text-green-600 font-bold flex items-center justify-end gap-1"><TrendingUp size={16} /> ₱{totalIncome.toLocaleString()}</p></div>
+                    <div className="text-right"><p className="text-xs text-slate-400 uppercase">Total Expenses</p><p className="text-red-600 font-bold flex items-center justify-end gap-1"><TrendingDown size={16} /> ₱{totalExpense.toLocaleString()}</p></div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-1 bg-white p-6 rounded-xl border border-slate-100 shadow-sm h-fit">
+                    <h3 className="font-bold text-slate-800 mb-4 flex items-center justify-between"><span className="flex items-center gap-2"><Plus size={18} className="text-blue-600" /> New Transaction</span></h3>
+                    <form onSubmit={handleTransactionSubmit} className="space-y-4">
+                        <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Transaction Type</label>
+                        <div className="flex bg-slate-100 p-1 rounded-lg">
+                            <button type="button" onClick={() => setNewTrans({...newTrans, type: 'income'})} className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${newTrans.type === 'income' ? 'bg-green-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Income</button>
+                            <button type="button" onClick={() => setNewTrans({...newTrans, type: 'expense'})} className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${newTrans.type === 'expense' ? 'bg-red-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Expense</button>
+                        </div>
+                        </div>
+                        <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Amount (₱)</label>
+                        <input type="number" required className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="0.00" value={newTrans.amount} onChange={e => setNewTrans({...newTrans, amount: e.target.value})} />
+                        </div>
+                        <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
+                        <input type="text" required className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder={newTrans.type === 'income' ? "e.g., Sunday Tithes" : "e.g., Youth Pizza Party"} value={newTrans.description} onChange={e => setNewTrans({...newTrans, description: e.target.value})} />
+                        </div>
+                        <button type="submit" className={`w-full py-2.5 rounded-lg font-bold text-white transition-colors ${newTrans.type === 'income' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>Record {newTrans.type === 'income' ? 'Income' : 'Expense'}</button>
+                    </form>
+                    </div>
+
+                    <div className="lg:col-span-2 bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <div className="flex items-center gap-4">
+                            <h3 className="font-bold text-slate-800">History</h3>
+                            <div className="flex items-center text-sm border border-slate-200 rounded-lg overflow-hidden">
+                            <span className="bg-slate-50 px-2 py-1 text-slate-400 border-r border-slate-200"><Filter size={14} /></span>
+                            <select className="bg-white px-2 py-1 outline-none text-slate-600 text-xs font-medium cursor-pointer" value={filterRange} onChange={(e) => setFilterRange(e.target.value)}>
+                                <option value="all">All History</option>
+                                <option value="week">This Week</option>
+                                <option value="month">This Month</option>
+                                <option value="year">This Year</option>
+                            </select>
+                            </div>
+                        </div>
+                        <span className="text-xs bg-slate-200 px-2 py-1 rounded text-slate-600">{activeFundLabel}</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                        <thead className="bg-white text-slate-500 border-b border-slate-100">
+                            <tr>
+                            <th className="px-6 py-3 font-medium">Date</th>
+                            <th className="px-6 py-3 font-medium">Description</th>
+                            <th className="px-6 py-3 font-medium text-right">Amount</th>
+                            <th className="px-6 py-3 font-medium text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                            {[...filteredTransactions].reverse().map((t) => (
+                            <tr key={t.id} className="hover:bg-slate-50">
+                                <td className="px-6 py-3 text-slate-500">{t.date}</td>
+                                <td className="px-6 py-3 font-medium text-slate-800">{t.description}</td>
+                                <td className={`px-6 py-3 text-right font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>{t.type === 'income' ? '+' : '-'} ₱{parseFloat(t.amount).toLocaleString()}</td>
+                                <td className="px-6 py-3 text-right flex justify-end gap-2">
+                                <button type="button" onClick={() => openEditModal(t)} className="p-1 text-slate-400 hover:text-blue-600 transition-colors" title="Edit"><Edit size={16} /></button>
+                                <button type="button" onClick={() => handleDeleteClick(t.id)} className="p-1 text-slate-400 hover:text-red-600 transition-colors" title="Delete"><Trash2 size={16} /></button>
+                                </td>
+                            </tr>
+                            ))}
+                            {filteredTransactions.length === 0 && (
+                            <tr><td colSpan="4" className="px-6 py-8 text-center text-slate-400">No transactions found for this period.</td></tr>
+                            )}
+                        </tbody>
+                        </table>
+                    </div>
+                    </div>
+                </div>
+                </div>
+            );
+        };
+
+        const PrayerRequestManager = ({ requests, onUpdateRequest }) => {
+            const handleStatusChange = (id, newStatus) => {
+                onUpdateRequest(id, newStatus);
+            };
+
+            return (
+                <div className="space-y-6">
+                <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
+                    <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                    <MessageCircle size={20} className="text-purple-600" /> Prayer Requests
+                    </h3>
+                    <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-slate-50 text-slate-500 font-medium">
+                        <tr>
+                            <th className="px-6 py-4">Date</th>
+                            <th className="px-6 py-4">Name</th>
+                            <th className="px-6 py-4">Request</th>
+                            <th className="px-6 py-4">Status</th>
+                            <th className="px-6 py-4 text-right">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                        {requests.map((req) => (
+                            <tr key={req.id} className="hover:bg-slate-50">
+                            <td className="px-6 py-4 text-slate-500 whitespace-nowrap">{req.date}</td>
+                            <td className="px-6 py-4 font-bold text-slate-700">{req.isAnonymous ? 'Anonymous' : req.name}</td>
+                            <td className="px-6 py-4 text-slate-600 max-w-xs truncate" title={req.message}>{req.message}</td>
+                            <td className="px-6 py-4">
+                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                req.status === 'New' ? 'bg-blue-100 text-blue-700' : 
+                                req.status === 'Prayed' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
+                                }`}>
+                                {req.status}
+                                </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                                {req.status !== 'Prayed' && (
+                                <button 
+                                    onClick={() => handleStatusChange(req.id, 'Prayed')}
+                                    className="text-green-600 hover:text-green-800 text-xs font-medium mr-3 flex items-center gap-1 float-right"
+                                >
+                                    <CheckCircle size={14} /> Mark Prayed
+                                </button>
+                                )}
+                            </td>
+                            </tr>
+                        ))}
+                        {requests.length === 0 && (
+                            <tr><td colSpan="5" className="text-center py-8 text-slate-400">No prayer requests yet.</td></tr>
+                        )}
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
+                </div>
+            );
+        };
+
+        const EventsManager = ({ events, registrations, onAddEvent, onUpdateEvent, onDeleteEvent }) => {
+            const [newEvent, setNewEvent] = useState({ 
+                title: '', startDate: '', endDate: '', time: '', location: '', recurrence: 'none' 
+            });
+            const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+            const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+            const [eventToEdit, setEventToEdit] = useState(null);
+            const [viewRegistrationsEvent, setViewRegistrationsEvent] = useState(null);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                onAddEvent({ 
+                ...newEvent, 
+                id: Date.now(),
+                endDate: newEvent.endDate || newEvent.startDate 
+                });
+                setNewEvent({ title: '', startDate: '', endDate: '', time: '', location: '', recurrence: 'none' });
+            };
+
+            const openEditModal = (event) => {
+                setEventToEdit(event);
+                setIsEditModalOpen(true);
+            };
+
+            const handleSaveEdit = (updatedEvent) => {
+                onUpdateEvent(updatedEvent);
+            };
+
+            const confirmDelete = () => {
+                if (deleteConfirmId) {
+                onDeleteEvent(deleteConfirmId);
+                setDeleteConfirmId(null);
+                }
+            };
+
+            return (
+                <div className="max-w-6xl mx-auto space-y-8">
+                <EditEventModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} event={eventToEdit} onSave={handleSaveEdit} />
+                
+                <ConfirmationModal 
+                    isOpen={!!deleteConfirmId}
+                    title="Delete Event?"
+                    message="Are you sure you want to remove this event? It will no longer be visible on the public website."
+                    onConfirm={confirmDelete}
+                    onCancel={() => setDeleteConfirmId(null)}
+                />
+
+                <ViewRegistrationsModal 
+                    isOpen={!!viewRegistrationsEvent} 
+                    onClose={() => setViewRegistrationsEvent(null)} 
+                    event={viewRegistrationsEvent}
+                    registrations={registrations}
+                />
+
+                <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg flex gap-3 items-start">
+                    <div className="bg-blue-600 text-white p-2 rounded-full mt-0.5"><Calendar size={16} /></div>
+                    <div>
+                    <h4 className="font-bold text-blue-900 text-sm">Event Management</h4>
+                    <p className="text-blue-700 text-xs mt-1">
+                        Create one-time or recurring events. Locations will be linked to Google Maps on the website.
+                    </p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+                    <div className="xl:col-span-4">
+                    <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
+                        <h3 className="font-bold text-slate-800 mb-4">Create Event</h3>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-medium text-slate-500 mb-1">Event Title</label>
+                            <input 
+                            type="text" 
+                            required
+                            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            value={newEvent.title}
+                            onChange={e => setNewEvent({...newEvent, title: e.target.value})}
+                            placeholder="e.g., Sunday Worship"
+                            />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                            <label className="block text-xs font-medium text-slate-500 mb-1">Start Date</label>
+                            <input 
+                                type="date" 
+                                required
+                                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                                value={newEvent.startDate}
+                                onChange={e => setNewEvent({...newEvent, startDate: e.target.value})}
+                            />
+                            </div>
+                            <div>
+                            <label className="block text-xs font-medium text-slate-500 mb-1">End Date (Optional)</label>
+                            <input 
+                                type="date" 
+                                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                                value={newEvent.endDate}
+                                onChange={e => setNewEvent({...newEvent, endDate: e.target.value})}
+                            />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label className="block text-xs font-medium text-slate-500 mb-1">Time</label>
+                                <input 
+                                type="text" 
+                                required
+                                placeholder="e.g., 9:00 AM"
+                                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                value={newEvent.time}
+                                onChange={e => setNewEvent({...newEvent, time: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-slate-500 mb-1">Recurrence</label>
+                                <select 
+                                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                value={newEvent.recurrence}
+                                onChange={e => setNewEvent({...newEvent, recurrence: e.target.value})}
+                                >
+                                <option value="none">One-time</option>
+                                <option value="weekly">Weekly</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-medium text-slate-500 mb-1">Location (Map Address)</label>
+                            <input 
+                            type="text" 
+                            required
+                            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            value={newEvent.location}
+                            onChange={e => setNewEvent({...newEvent, location: e.target.value})}
+                            placeholder="e.g., 123 Faith Ave, QC"
+                            />
+                        </div>
+                        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            Publish Event
+                        </button>
+                        </form>
+                    </div>
+                    </div>
+
+                    <div className="xl:col-span-8 space-y-4">
+                    <h3 className="font-bold text-slate-800 flex items-center justify-between">
+                        <span>Upcoming Events</span>
+                        <span className="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-1 rounded-full">{events.length} Active</span>
+                    </h3>
+                    
+                    <div className="grid gap-4">
+                        {events.map((event) => {
+                        const startDate = new Date(event.startDate);
+                        return (
+                            <div key={event.id} className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-start gap-5">
+                                <div className="flex flex-col items-center justify-center bg-blue-50 text-blue-700 rounded-lg w-16 h-16 shrink-0 border border-blue-100">
+                                    <span className="text-xs font-bold uppercase tracking-wider opacity-70">
+                                        {startDate.toLocaleDateString('en-US', { month: 'short' })}
+                                    </span>
+                                    <span className="font-bold text-2xl leading-none mt-0.5">
+                                        {event.recurrence === 'weekly' ? <Repeat size={20} /> : startDate.getDate()}
+                                    </span>
+                                </div>
+                                
+                                <div>
+                                    <h4 className="font-bold text-slate-800 text-lg mb-1">{event.title}</h4>
+                                    <div className="space-y-1.5">
+                                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                                        <Clock size={14} className="text-slate-400" /> 
+                                        <span>
+                                        {event.recurrence === 'weekly' ? `Every ${startDate.toLocaleDateString('en-US', { weekday: 'long' })}` : startDate.toLocaleDateString('en-PH')} at <span className="font-medium text-slate-900">{event.time}</span>
+                                        </span>
+                                    </div>
+                                    
+                                    {event.endDate && event.endDate !== event.startDate && (
+                                        <div className="flex items-center gap-2 text-xs text-slate-500 ml-6">
+                                        <span>Ends: {new Date(event.endDate).toLocaleDateString('en-PH')}</span>
+                                        </div>
+                                    )}
+                                    
+                                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                                        <MapPin size={14} className="text-slate-400" /> 
+                                        <span>{event.location}</span>
+                                    </div>
+                                    </div>
+                                </div>
+                                </div>
+
+                                <div className="flex gap-2">
+                                <button 
+                                    onClick={() => setViewRegistrationsEvent(event)}
+                                    className="text-slate-300 hover:text-green-500 hover:bg-green-50 p-2 rounded-lg transition-all"
+                                    title="View Registrations"
+                                >
+                                    <Users size={18} />
+                                </button>
+                                <button 
+                                    onClick={() => openEditModal(event)}
+                                    className="text-slate-300 hover:text-blue-500 hover:bg-blue-50 p-2 rounded-lg transition-all"
+                                    title="Edit Event"
+                                >
+                                    <Edit size={18} />
+                                </button>
+                                <button 
+                                    onClick={() => setDeleteConfirmId(event.id)}
+                                    className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all"
+                                    title="Delete Event"
+                                >
+                                    <Trash2 size={18} />
+                                </button>
+                                </div>
+                            </div>
+                            </div>
+                        );
+                        })}
+                        
+                        {events.length === 0 && (
+                        <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                            <Calendar size={48} className="mx-auto text-slate-300 mb-3" />
+                            <p className="text-slate-500 font-medium">No upcoming events scheduled.</p>
+                            <p className="text-xs text-slate-400 mt-1">Use the form to create your first event.</p>
+                        </div>
+                        )}
+                    </div>
+                    </div>
+                </div>
+                </div>
+            );
+        };
+
+        const SermonManager = () => {
+            const [youtubeId, setYoutubeId] = useState('');
+            
+            return (
+                <div className="max-w-2xl mx-auto space-y-6">
+                <div className="bg-white p-8 rounded-xl border border-slate-100 shadow-sm">
+                    <div className="flex items-center gap-3 mb-6">
+                    <div className="bg-red-600 text-white p-3 rounded-lg"><Youtube size={24} /></div>
+                    <div>
+                        <h3 className="font-bold text-slate-800 text-lg">YouTube Integration</h3>
+                        <p className="text-slate-500 text-sm">Connect your channel to display sermons.</p>
+                    </div>
+                    </div>
+
+                    <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Latest Sermon Video ID</label>
+                        <div className="flex gap-2">
+                        <input 
+                            type="text" 
+                            placeholder="e.g., dQw4w9WgXcQ" 
+                            className="flex-1 px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-red-500 focus:outline-none font-mono text-sm"
+                            value={youtubeId}
+                            onChange={(e) => setYoutubeId(e.target.value)}
+                        />
+                        <button className="bg-red-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-red-700">Update</button>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-2">
+                        Enter the 11-character ID found at the end of your YouTube URL (e.g., youtube.com/watch?v=<b>ID_HERE</b>)
+                        </p>
+                    </div>
+                    </div>
+                </div>
+                </div>
+            );
+        };
+
+        const SettingsManager = ({ users, onAddUser, onUpdateUser, onDeleteUser, currentUser }) => {
+            const [formData, setFormData] = useState({ username: '', password: '', role: 'Pastor' });
+            const [editingId, setEditingId] = useState(null);
+            const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+
+            const isHighAuth = currentUser.role === 'Pastor' || currentUser.role === 'Admin';
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (editingId) {
+                onUpdateUser({ ...formData, id: editingId });
+                setEditingId(null);
+                } else {
+                onAddUser({ ...formData, id: Date.now() });
+                }
+                setFormData({ username: '', password: '', role: 'Pastor' });
+            };
+
+            const handleEdit = (user) => {
+                setFormData({ username: user.username, password: user.password, role: user.role });
+                setEditingId(user.id);
+            };
+
+            const confirmDelete = () => {
+                if (deleteConfirmId) {
+                onDeleteUser(deleteConfirmId);
+                setDeleteConfirmId(null);
+                }
+            };
+
+            if (!isHighAuth) {
+                return <div className="p-12 text-center text-slate-500 bg-white rounded-xl">Only Admins and Pastors can manage accounts.</div>
+            }
+
+            return (
+                <div className="space-y-8">
+                <ConfirmationModal 
+                    isOpen={!!deleteConfirmId}
+                    title="Delete User?"
+                    message="Are you sure you want to delete this account? They will no longer be able to log in."
+                    onConfirm={confirmDelete}
+                    onCancel={() => setDeleteConfirmId(null)}
+                />
+
+                <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
+                    <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2"><Settings size={20} /> Admin Accounts</h3>
+                    
+                    <div className="overflow-x-auto mb-8">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-slate-50 text-slate-500">
+                        <tr>
+                            <th className="px-6 py-3 rounded-l-lg">Username</th>
+                            <th className="px-6 py-3">Role</th>
+                            <th className="px-6 py-3">Password</th>
+                            <th className="px-6 py-3 rounded-r-lg text-right">Action</th>
+                        </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                        {users.map(user => (
+                            <tr key={user.id}>
+                            <td className="px-6 py-4 font-bold text-slate-700">{user.username}</td>
+                            <td className="px-6 py-4"><span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs uppercase font-bold">{user.role}</span></td>
+                            <td className="px-6 py-4 font-mono text-slate-400">{user.password}</td>
+                            <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                <button 
+                                onClick={() => handleEdit(user)}
+                                className="text-blue-600 hover:text-blue-800 p-1"
+                                title="Edit"
+                                >
+                                <Edit size={16} />
+                                </button>
+                                {user.id !== currentUser.id && (
+                                <button 
+                                    onClick={() => setDeleteConfirmId(user.id)}
+                                    className="text-red-400 hover:text-red-600 p-1"
+                                    title="Delete"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                                )}
+                            </td>
+                            </tr>
+                        ))}
+                        </tbody>
+                    </table>
+                    </div>
+
+                    <div className={`p-6 rounded-xl border ${editingId ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-slate-100'}`}>
+                    <h4 className="font-bold text-slate-700 mb-4 text-sm flex justify-between items-center">
+                        {editingId ? 'Edit Account' : 'Create New Account'}
+                        {editingId && <button onClick={() => { setEditingId(null); setFormData({username:'', password:'', role:'Pastor'}); }} className="text-xs text-red-500 hover:underline">Cancel Edit</button>}
+                    </h4>
+                    <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4 items-end">
+                        <div className="flex-1 w-full">
+                        <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Username</label>
+                        <input 
+                            type="text" 
+                            required 
+                            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-blue-500"
+                            value={formData.username}
+                            onChange={e => setFormData({...formData, username: e.target.value})}
+                        />
+                        </div>
+                        <div className="flex-1 w-full">
+                        <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Password</label>
+                        <input 
+                            type="text" 
+                            required 
+                            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-blue-500"
+                            value={formData.password}
+                            onChange={e => setFormData({...formData, password: e.target.value})}
+                        />
+                        </div>
+                        <div className="w-48">
+                        <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Role</label>
+                        <select 
+                            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-blue-500"
+                            value={formData.role}
+                            onChange={e => setFormData({...formData, role: e.target.value})}
+                        >
+                            <option value="Pastor">Pastor</option>
+                            <option value="Admin">Admin</option>
+                            <option value="TechSupp">Tech Support</option>
+                            <option value="Church Treasurer">Church Treasurer</option>
+                            <option value="Youth Treasurer">Youth Treasurer</option>
+                            <option value="Women's Treasurer">Women's Treasurer</option>
+                            <option value="Men's Treasurer">Men's Treasurer</option>
+                        </select>
+                        </div>
+                        <button className={`${editingId ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-800 hover:bg-slate-900'} text-white px-6 py-2 rounded-lg font-medium min-w-[100px]`}>
+                        {editingId ? 'Update' : 'Create'}
+                        </button>
+                    </form>
+                    </div>
+                </div>
+                </div>
+            );
+        };
+
+        const AdminDashboard = ({ 
+            onLogout, 
+            members, 
+            onAddMember, 
+            transactions, 
+            onAddTransaction, 
+            onUpdateTransaction,
+            onDeleteTransaction,
+            events, 
+            registrations,
+            onAddEvent, 
+            onUpdateEvent,
+            onDeleteEvent,
+            prayerRequests,
+            onUpdatePrayerRequest,
+            users,
+            onAddUser,
+            onUpdateUser,
+            onDeleteUser,
+            currentUser
+        }) => {
+            const getDefaultTab = () => {
+                if (currentUser.role === 'TechSupp') return 'Events';
+                if (currentUser.role.includes('Treasurer')) return 'Funds';
+                return 'Dashboard';
+            };
+
+            const [activeTab, setActiveTab] = useState(getDefaultTab);
+            const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+            const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+            const totalCongregation = members.length;
+            const totalIncome = transactions.filter(t => t.type === 'income').reduce((a, b) => a + parseFloat(b.amount), 0);
+            const totalExpense = transactions.filter(t => t.type === 'expense').reduce((a, b) => a + parseFloat(b.amount), 0);
+            const currentFunds = totalIncome - totalExpense;
+            const newPrayerRequests = prayerRequests ? prayerRequests.filter(r => r.status === 'New').length : 0;
+
+            const allNavItems = [
+                { label: 'Dashboard', icon: ArrowUpRight },
+                { label: 'Congregation', icon: Users },
+                { label: 'Funds', icon: DollarSign }, 
+                { label: 'Events', icon: Calendar },
+                { label: 'Prayer Requests', icon: MessageCircle },
+                { label: 'Sermons', icon: Video },
+                { label: 'Settings', icon: Settings },
+            ];
+
+            const isHighAuth = currentUser.role === 'Pastor' || currentUser.role === 'Admin';
+            const isTech = currentUser.role === 'TechSupp';
+            const isTreasurer = currentUser.role.includes('Treasurer');
+
+            const navItems = allNavItems.filter(item => {
+                if (isHighAuth) return true; 
+                if (isTech) return ['Events', 'Sermons'].includes(item.label);
+                if (isTreasurer) return item.label === 'Funds';
+                return false;
+            });
+
+            const renderContent = () => {
+                if (isTech && !['Events', 'Sermons'].includes(activeTab)) return null;
+                if (isTreasurer && activeTab !== 'Funds') return null;
+
+                switch (activeTab) {
+                case 'Congregation': return <CongregationManager members={members} onAddMember={onAddMember} />;
+                case 'Funds': return <FundsManager transactions={transactions} onAddTransaction={onAddTransaction} onUpdateTransaction={onUpdateTransaction} onDeleteTransaction={onDeleteTransaction} currentUser={currentUser} />;
+                case 'Events': return <EventsManager events={events} registrations={registrations} onAddEvent={onAddEvent} onUpdateEvent={onUpdateEvent} onDeleteEvent={onDeleteEvent} />;
+                case 'Prayer Requests': return <PrayerRequestManager requests={prayerRequests} onUpdateRequest={onUpdatePrayerRequest} />;
+                case 'Sermons': return <SermonManager />;
+                case 'Settings': return <SettingsManager users={users} onAddUser={onAddUser} onUpdateUser={onUpdateUser} onDeleteUser={onDeleteUser} currentUser={currentUser} />;
+                case 'Dashboard':
+                    return (
+                    <div className="animate-in fade-in slide-in-from-bottom-2 flex flex-col gap-8 h-full">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <AdminStatCard title="Total Congregation" value={totalCongregation} change="+1 this week" isPositive={true} icon={Users} color="bg-blue-100 text-blue-600" />
+                        <AdminStatCard title="Total Balance" value={`₱${currentFunds.toLocaleString()}`} change="Net" isPositive={true} icon={DollarSign} color="bg-green-100 text-green-600" />
+                        <AdminStatCard title="Prayer Requests" value={newPrayerRequests} change="New" isPositive={true} icon={MessageCircle} color="bg-purple-100 text-purple-600" />
+                        <AdminStatCard title="My Role" value={currentUser.role} change="Logged In" isPositive={true} icon={Briefcase} color="bg-slate-100 text-slate-600" />
+                        </div>
+                        <div className="flex-1 min-h-[500px]"> 
+                        <CalendarWidget events={events} />
+                        </div>
+                    </div>
+                    );
+                default: return null;
+                }
+            };
+
+            return (
+                <div className="flex h-screen bg-slate-50 font-sans text-slate-900 selection:bg-blue-100 overflow-hidden">
+                {mobileMenuOpen && <div className="fixed inset-0 bg-black/50 z-20 lg:hidden backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />}
+
+                <aside className={`fixed lg:static inset-y-0 left-0 z-30 bg-white border-r border-slate-200 h-full transition-all duration-300 ease-in-out flex flex-col ${sidebarCollapsed ? 'w-[80px]' : 'w-64'} ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+                    <div className={`h-16 flex items-center px-6 border-b border-slate-100 ${sidebarCollapsed ? 'justify-center px-0' : 'justify-between'}`}>
+                    {!sidebarCollapsed ? <div className="flex items-center gap-2"><div className="bg-blue-600 text-white p-1.5 rounded-lg"><Heart size={20} fill="currentColor" /></div><span className="font-bold text-xl tracking-tight text-slate-800">EWM<span className="text-blue-600">Admin</span></span></div> : <div className="bg-blue-600 text-white p-2 rounded-lg"><Heart size={24} fill="currentColor" /></div>}
+                    <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="hidden lg:flex text-slate-400 hover:text-blue-600 transition-colors">
+                        {sidebarCollapsed ? <ChevronRight size={20} /> : <div className="p-1 hover:bg-slate-100 rounded"><X size={16} /></div>}
+                    </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto py-6 px-3">
+                    <nav className="space-y-1">
+                        {navItems.map((item) => (
+                        <AdminSidebarItem key={item.label} icon={item.icon} label={item.label} active={activeTab === item.label} collapsed={sidebarCollapsed} onClick={() => { setActiveTab(item.label); setMobileMenuOpen(false); }} />
+                        ))}
+                    </nav>
+                    </div>
+                    <div className="p-4 border-t border-slate-100">
+                    <div className={`flex items-center gap-3 mb-4 px-2 ${sidebarCollapsed ? 'justify-center' : ''}`}>
+                        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+                        {currentUser.username.substring(0, 2).toUpperCase()}
+                        </div>
+                        {!sidebarCollapsed && <div className="overflow-hidden"><p className="text-xs font-bold text-slate-800 truncate">{currentUser.username}</p><p className="text-[10px] text-slate-500 truncate uppercase">{currentUser.role}</p></div>}
+                    </div>
+                    <button onClick={onLogout} className={`w-full flex items-center gap-3 p-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors mb-2 ${sidebarCollapsed ? 'justify-center' : ''}`}>
+                        <LogOut size={20} /> {!sidebarCollapsed && <span className="font-medium text-sm">Log Out</span>}
+                    </button>
+                    </div>
+                </aside>
+
+                <div className="flex-1 flex flex-col min-w-0 overflow-hidden h-full">
+                    <header className="bg-white h-16 border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 z-10 shrink-0">
+                    <div className="flex items-center gap-4">
+                        <button className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg" onClick={() => setMobileMenuOpen(true)}><Menu size={24} /></button>
+                        <div className="hidden md:flex items-center relative max-w-md w-64 lg:w-96">
+                        <Search className="absolute left-3 text-slate-400" size={18} />
+                        <input type="text" placeholder="Search..." className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 md:gap-6">
+                        <button className="relative p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-colors"><Bell size={20} /><span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span></button>
+                    </div>
+                    </header>
+                    <main className="flex-1 overflow-y-auto p-4 lg:p-8">
+                    <div className="max-w-7xl mx-auto h-full flex flex-col">
+                        <div className="mb-6 shrink-0">
+                            <h1 className="text-2xl font-bold text-slate-800">{activeTab}</h1>
+                        </div>
+                        <div className="flex-1 min-h-0">
+                        {renderContent()}
+                        </div>
+                    </div>
+                    </main>
+                </div>
+                </div>
+            );
+        };
+
+        const PublicNavbar = ({ activePage, setActivePage, mobileMenuOpen, setMobileMenuOpen }) => {
+            const navLinks = ['Home', 'About', 'Ministries', 'Sermons', 'Events', 'Prayer', 'Give'];
+
+            return (
+                <nav className="bg-white sticky top-0 z-50 shadow-sm border-b border-slate-100">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-center h-20">
+                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActivePage('Home')}>
+                        <div className="bg-blue-600 text-white p-2 rounded-lg"><Heart size={24} fill="currentColor" /></div>
+                        <div>
+                        <span className="font-bold text-xl text-slate-900 tracking-tight block leading-none">Elect Word Ministry</span>
+                        <span className="text-xs text-blue-600 font-bold tracking-widest uppercase">Community Church</span>
+                        </div>
+                    </div>
+                    <div className="hidden md:flex space-x-8">
+                        {navLinks.map((link) => (
+                        <button key={link} onClick={() => setActivePage(link)} className={`text-sm font-medium transition-colors ${activePage === link ? 'text-blue-600' : 'text-slate-600 hover:text-blue-600'}`}>{link}</button>
+                        ))}
+                    </div>
+                    <div className="md:hidden">
+                        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-slate-600 hover:text-slate-900 focus:outline-none">{mobileMenuOpen ? <X size={28} /> : <Menu size={28} />}</button>
+                    </div>
+                    </div>
+                </div>
+                {mobileMenuOpen && (
+                    <div className="md:hidden bg-white border-t border-slate-100 animate-in slide-in-from-top-2">
+                    <div className="px-4 pt-2 pb-6 space-y-1">
+                        {navLinks.map((link) => (
+                        <button key={link} onClick={() => { setActivePage(link); setMobileMenuOpen(false); }} className={`block w-full text-left px-3 py-3 rounded-md text-base font-medium ${activePage === link ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:bg-slate-50'}`}>{link}</button>
+                        ))}
+                    </div>
+                    </div>
+                )}
+                </nav>
+            );
+        };
+
+        const ServiceCountdown = () => {
+            const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, nextServiceName: '' });
+
+            useEffect(() => {
+                const calculateTimeLeft = () => {
+                const now = new Date();
+                
+                // Calculate next Sunday 9:30 AM
+                const nextSun = new Date(now);
+                nextSun.setDate(now.getDate() + (7 - now.getDay()) % 7);
+                nextSun.setHours(9, 30, 0, 0);
+                if (nextSun <= now) nextSun.setDate(nextSun.getDate() + 7);
+
+                // Calculate next Thursday 7:00 PM
+                const nextThu = new Date(now);
+                // Logic for next Thursday: 4 is Thursday index.
+                // (4 + 7 - currentDay) % 7 gives days until next Thursday
+                const daysUntilThu = (4 + 7 - now.getDay()) % 7;
+                nextThu.setDate(now.getDate() + daysUntilThu);
+                nextThu.setHours(19, 0, 0, 0);
+                if (nextThu <= now) nextThu.setDate(nextThu.getDate() + 7);
+
+                let targetDate;
+                let serviceName;
+
+                if (nextSun < nextThu) {
+                    targetDate = nextSun;
+                    serviceName = 'Sunday Worship Service';
+                } else {
+                    targetDate = nextThu;
+                    serviceName = 'Prayer Meeting';
+                }
+
+                const difference = targetDate - now;
+
+                if (difference > 0) {
+                    return {
+                    days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+                    hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+                    minutes: Math.floor((difference / 1000 / 60) % 60),
+                    seconds: Math.floor((difference / 1000) % 60),
+                    nextServiceName: serviceName
+                    };
+                }
+                return { days: 0, hours: 0, minutes: 0, seconds: 0, nextServiceName: '' };
+                };
+
+                const timer = setInterval(() => {
+                setTimeLeft(calculateTimeLeft());
+                }, 1000);
+
+                return () => clearInterval(timer);
+            }, []);
+
+            return (
+                <div className="bg-slate-900 text-white py-12 border-b border-slate-800">
+                <div className="max-w-4xl mx-auto px-4 text-center">
+                    <p className="text-blue-400 font-bold tracking-widest uppercase text-sm mb-4">Next Service: {timeLeft.nextServiceName}</p>
+                    <div className="flex justify-center gap-4 md:gap-8 text-center">
+                    <div>
+                        <div className="text-4xl md:text-6xl font-bold font-mono">{String(timeLeft.days).padStart(2, '0')}</div>
+                        <div className="text-xs text-slate-500 mt-2 uppercase tracking-wider">Days</div>
+                    </div>
+                    <div className="text-4xl md:text-6xl font-bold text-slate-700">:</div>
+                    <div>
+                        <div className="text-4xl md:text-6xl font-bold font-mono">{String(timeLeft.hours).padStart(2, '0')}</div>
+                        <div className="text-xs text-slate-500 mt-2 uppercase tracking-wider">Hours</div>
+                    </div>
+                    <div className="text-4xl md:text-6xl font-bold text-slate-700">:</div>
+                    <div>
+                        <div className="text-4xl md:text-6xl font-bold font-mono">{String(timeLeft.minutes).padStart(2, '0')}</div>
+                        <div className="text-xs text-slate-500 mt-2 uppercase tracking-wider">Minutes</div>
+                    </div>
+                    <div className="text-4xl md:text-6xl font-bold text-slate-700">:</div>
+                    <div>
+                        <div className="text-4xl md:text-6xl font-bold font-mono">{String(timeLeft.seconds).padStart(2, '0')}</div>
+                        <div className="text-xs text-slate-500 mt-2 uppercase tracking-wider">Seconds</div>
+                    </div>
+                    </div>
+                </div>
+                </div>
+            );
+        };
+
+        const PublicEventsPage = ({ events, setActivePage, onRegisterInterest }) => {
+            const [registerModalOpen, setRegisterModalOpen] = useState(false);
+            const [selectedEvent, setSelectedEvent] = useState(null);
+            const [registrationSuccess, setRegistrationSuccess] = useState(false);
+
+            const regularServices = events.filter(e => e.recurrence === 'weekly');
+            const upcomingEvents = events.filter(e => e.recurrence !== 'weekly');
+
+            const handleRegisterClick = (event) => {
+                setSelectedEvent(event);
+                setRegisterModalOpen(true);
+            };
+
+            const renderEventCard = (event) => {
+                const startDate = new Date(event.startDate);
+                const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`;
+                return (
+                <div key={event.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-start md:items-center gap-6">
+                    <div className="bg-blue-100 text-blue-600 w-16 h-16 rounded-2xl flex flex-col items-center justify-center shrink-0">
+                        <span className="text-xs font-bold uppercase tracking-wider">Date</span>
+                        <span className="font-bold text-xl">{event.recurrence === 'weekly' ? <Repeat size={24}/> : startDate.getDate()}</span>
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-800">{event.title}</h3>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-slate-500 mt-1 text-sm">
+                            <span className="flex items-center gap-1">
+                            <Clock size={14} /> 
+                            {event.recurrence === 'weekly' ? `Every ${startDate.toLocaleDateString('en-US', { weekday: 'long' })}` : startDate.toLocaleDateString('en-PH')} at {event.time}
+                            </span>
+                            {event.endDate && event.endDate !== event.startDate && (
+                            <span className="text-xs bg-slate-100 px-1 rounded">to {new Date(event.endDate).toLocaleDateString('en-PH')}</span>
+                            )}
+                            <a href={mapLink} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-blue-600 hover:underline">
+                            <MapPin size={14} /> {event.location}
+                            </a>
+                        </div>
+                    </div>
+                    </div>
+                    <button 
+                    onClick={() => handleRegisterClick(event)}
+                    className="bg-slate-900 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
+                    >
+                        Register Interest
+                    </button>
+                </div>
+                );
+            };
+
+            return (
+                <div className="py-16 bg-slate-50 min-h-[60vh]">
+                <EventRegistrationModal 
+                    isOpen={registerModalOpen} 
+                    onClose={() => setRegisterModalOpen(false)} 
+                    event={selectedEvent}
+                    onRegister={(data) => {
+                    if (onRegisterInterest) onRegisterInterest(data);
+                    setRegistrationSuccess(true);
+                    }}
+                />
+                
+                {registrationSuccess && (
+                    <SuccessToast message="Registration Successful! We'll be in touch." onClose={() => setRegistrationSuccess(false)} />
+                )}
+
+                <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-12">
+                    <h2 className="text-3xl font-bold text-slate-900">Events</h2>
+                    <p className="mt-4 text-slate-600">Join us for our upcoming gatherings and fellowship.</p>
+                    </div>
+
+                    <div className="mb-12">
+                    <h3 className="text-xl font-bold text-slate-800 mb-6 border-l-4 border-blue-500 pl-4">Regular Services</h3>
+                    <div className="space-y-4">
+                        {regularServices.length > 0 ? regularServices.map(renderEventCard) : <p className="text-slate-500 italic">No regular services listed.</p>}
+                    </div>
+                    </div>
+
+                    <div>
+                    <h3 className="text-xl font-bold text-slate-800 mb-6 border-l-4 border-orange-500 pl-4">Upcoming Special Events</h3>
+                    <div className="space-y-4">
+                        {upcomingEvents.length > 0 ? upcomingEvents.map(renderEventCard) : <p className="text-slate-500 italic">No upcoming special events listed at the moment.</p>}
+                    </div>
+                    </div>
+
+                    <div className="mt-12 text-center">
+                    <button onClick={() => setActivePage('Home')} className="text-blue-600 font-medium hover:underline flex items-center justify-center gap-2 mx-auto">
+                        <ArrowRight size={16} className="rotate-180" /> Back to Home
+                    </button>
+                    </div>
+                </div>
+                </div>
+            );
+        };
+
+        const PublicPrayerPage = ({ onAddPrayerRequest }) => {
+            const [request, setRequest] = useState({ name: '', message: '', isAnonymous: false });
+            const [submitted, setSubmitted] = useState(false);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                onAddPrayerRequest({
+                ...request,
+                id: Date.now(),
+                date: new Date().toLocaleDateString('en-PH'),
+                status: 'New'
+                });
+                setSubmitted(true);
+            };
+
+            if (submitted) {
+                return (
+                <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
+                    <div className="bg-green-100 p-4 rounded-full text-green-600 mb-4"><CheckCircle size={48} /></div>
+                    <h2 className="text-2xl font-bold text-slate-800 mb-2">Request Received</h2>
+                    <p className="text-slate-600 max-w-md mb-6">Thank you for sharing. Our prayer team will be lifting this up in prayer.</p>
+                    <button onClick={() => {setSubmitted(false); setRequest({name:'', message:'', isAnonymous:false})}} className="text-blue-600 font-medium hover:underline">Send Another Request</button>
+                </div>
+                );
+            }
+
+            return (
+                <div className="py-16 bg-slate-50 min-h-[60vh]">
+                <div className="max-w-2xl mx-auto px-4">
+                    <div className="text-center mb-10">
+                    <h2 className="text-3xl font-bold text-slate-900">Prayer Requests</h2>
+                    <p className="mt-2 text-slate-600">"Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God."</p>
+                    </div>
+                    
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Your Name</label>
+                        <input 
+                            type="text" 
+                            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            placeholder={request.isAnonymous ? "Anonymous" : "Enter your name"}
+                            disabled={request.isAnonymous}
+                            value={request.name}
+                            onChange={e => setRequest({...request, name: e.target.value})}
+                        />
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                        <input 
+                            type="checkbox" 
+                            id="anon"
+                            checked={request.isAnonymous}
+                            onChange={e => setRequest({...request, isAnonymous: e.target.checked, name: e.target.checked ? '' : request.name})}
+                            className="rounded text-blue-600 focus:ring-blue-500"
+                        />
+                        <label htmlFor="anon" className="text-sm text-slate-600">Keep my request anonymous</label>
+                        </div>
+
+                        <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Prayer Request</label>
+                        <textarea 
+                            required
+                            rows={4}
+                            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            placeholder="Share your prayer need here..."
+                            value={request.message}
+                            onChange={e => setRequest({...request, message: e.target.value})}
+                        />
+                        </div>
+
+                        <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-900/10">
+                        Submit Prayer Request
+                        </button>
+                    </form>
+                    </div>
+                </div>
+                </div>
+            );
+        };
+
+        const PublicWebsite = ({ onOpenLogin, events, onAddPrayerRequest, onAddRegistration }) => {
+            const [activePage, setActivePage] = useState('Home');
+            const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+            const renderContent = () => {
+                if (activePage === 'Home') return (
+                <>
+                    <div className="relative bg-slate-900 text-white py-24 lg:py-32 overflow-hidden">
+                        <div className="absolute inset-0 z-0 opacity-20 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-400 via-slate-900 to-black"></div>
+                        <div className="absolute inset-0 z-0 bg-[url('https://images.unsplash.com/photo-1438232992991-995b7058bbb3?ixlib=rb-4.0.3&auto=format&fit=crop&w=2073&q=80')] bg-cover bg-center opacity-30 mix-blend-overlay"></div>
+                        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight">Welcome <span className="text-blue-400">Home.</span></h1>
+                            <p className="mt-4 max-w-2xl mx-auto text-xl text-slate-300 mb-10">We are a community of believers dedicated to loving God, loving people, and making a difference in our city.</p>
+                            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                            <button onClick={() => setActivePage('Events')} className="px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-bold transition-all shadow-lg flex items-center justify-center gap-2">Plan Your Visit <ArrowRight size={18} /></button>
+                            </div>
+                        </div>
+                    </div>
+                    <ServiceCountdown />
+                    <div className="bg-white py-12 border-b border-slate-100">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                            <div className="py-4 md:py-0"><div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4"><Clock size={24} /></div><h3 className="text-lg font-bold text-slate-900">Service Times</h3>
+                                <p className="mt-2 text-slate-600 text-sm">Worship Service: Sun 9:30 AM - 12:00 PM</p>
+                                <p className="text-slate-600 text-sm">Prayer Meeting: Thu 7:00 PM - 9:00 PM</p>
+                            </div>
+                            <div className="py-4 md:py-0"><div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4"><MapPin size={24} /></div><h3 className="text-lg font-bold text-slate-900">Location</h3><p className="mt-2 text-slate-600 text-sm px-4">8 Rainbow Avenue, Munting Bahayan, Pinagbuhatan, Pasig City</p></div>
+                            <div className="py-4 md:py-0"><div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4"><Video size={24} /></div><h3 className="text-lg font-bold text-slate-900">Online Stream</h3><p className="mt-2 text-slate-600">Live on Facebook & YouTube</p></div>
+                            </div>
+                        </div>
+                    </div>
+                </>
+                );
+                if (activePage === 'Events') return <PublicEventsPage events={events} setActivePage={setActivePage} onRegisterInterest={onAddRegistration} />;
+                if (activePage === 'Prayer') return <PublicPrayerPage onAddPrayerRequest={onAddPrayerRequest} />;
+                
+                return (
+                <div className="min-h-[60vh] flex flex-col items-center justify-center bg-slate-50 px-4 text-center">
+                    <div className="bg-white p-8 rounded-2xl shadow-sm max-w-lg w-full">
+                    <h2 className="text-3xl font-bold text-slate-900 mb-4">{activePage}</h2>
+                    <p className="text-slate-600 mb-8">This is the {activePage} page.</p>
+                    <button onClick={() => setActivePage('Home')} className="text-blue-600 font-medium hover:underline flex items-center justify-center gap-2 mx-auto">
+                        <ArrowRight size={16} className="rotate-180" /> Back to Home
+                    </button>
+                    </div>
+                </div>
+                );
+            };
+
+            return (
+                <div className="font-sans text-slate-900 bg-white min-h-screen flex flex-col">
+                <PublicNavbar activePage={activePage} setActivePage={setActivePage} mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} />
+                <main className="flex-grow">{renderContent()}</main>
+                <footer className="bg-slate-900 text-slate-300 py-12 border-t border-slate-800">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                        <p>&copy; {new Date().getFullYear()} Elect Word Ministry.</p>
+                        <button onClick={onOpenLogin} className="text-slate-600 hover:text-slate-400 text-xs transition-colors mt-4">Admin Login</button>
+                    </div>
+                </footer>
+                </div>
+            );
+        };
+
+        const LoginScreen = ({ onLogin, onCancel, users }) => {
+            const [username, setUsername] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                const user = users.find(u => u.username === username && u.password === password);
+                if (user) {
+                onLogin(user);
+                } else {
+                setError('Invalid username or password');
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
+                    <div className="p-8 pb-4">
+                    <div className="flex items-center gap-2 mb-6 justify-center">
+                        <div className="bg-blue-600 text-white p-2 rounded-lg"><Heart size={24} fill="currentColor" /></div>
+                        <span className="font-bold text-xl text-slate-900">EWM<span className="text-blue-600">Admin</span></span>
+                    </div>
+                    <h2 className="text-center font-bold text-lg text-slate-800 mb-2">Sign In to Dashboard</h2>
+                    <p className="text-center text-sm text-slate-500 mb-6">Enter your credentials to access the admin panel.</p>
+                    
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
+                        <input 
+                            type="text" 
+                            required 
+                            className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
+                            value={username}
+                            onChange={e => {setUsername(e.target.value); setError('')}}
+                            placeholder="Enter username"
+                        />
+                        </div>
+                        <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                        <input 
+                            type="password" 
+                            required 
+                            className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
+                            value={password}
+                            onChange={e => {setPassword(e.target.value); setError('')}}
+                            placeholder="Enter password"
+                        />
+                        </div>
+                        
+                        {error && <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg"><AlertCircle size={16} /> {error}</div>}
+
+                        <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-900/10">Sign In</button>
+                    </form>
+
+                    <div className="mt-6 text-center text-xs text-slate-400">
+                        <p>Default Login: <b>admin</b> / <b>123</b></p>
+                    </div>
+                    </div>
+                    <div className="p-4 border-t border-slate-100 bg-slate-50 text-center">
+                    <button onClick={onCancel} className="text-sm text-slate-500 hover:text-slate-800 font-medium">Cancel Login</button>
+                    </div>
+                </div>
+                </div>
+            );
+        };
+
+        const ChurchApp = () => {
+            const [view, setView] = useState('public'); 
+            const [showLogin, setShowLogin] = useState(false);
+            const [currentUser, setCurrentUser] = useState(null);
+
+            const [members, setMembers] = useState([{ id: 1, name: 'Alice Johnson', role: 'Deacon', contact: 'alice@example.com' }]);
+            const [transactions, setTransactions] = useState([
+                { id: 1, type: 'income', fundId: 'offering', amount: 5000, description: 'Sunday Tithes', date: '10/24/2023', timestamp: 1698115200000 },
+                { id: 2, type: 'expense', fundId: 'offering', amount: 1200, description: 'Utilities Bill', date: '10/25/2023', timestamp: 1698201600000 },
+            ]);
+            const [events, setEvents] = useState([
+                { id: 1, title: "Sunday Service", startDate: "2023-10-29", time: "9:00 AM", location: "Main Sanctuary, 123 Faith Ave", recurrence: 'weekly' },
+                { id: 2, title: "Thursday Prayer Meeting", startDate: "2023-10-26", time: "7:00 PM", location: "Prayer Room", recurrence: 'weekly' }
+            ]);
+            const [registrations, setRegistrations] = useState([
+                { id: 1, eventId: 1, visitorName: "Maria Garcia", visitorContact: "09123456789", timestamp: 1698600000000 },
+            ]);
+            const [prayerRequests, setPrayerRequests] = useState([
+                { id: 1, name: 'John Doe', message: 'Please pray for my mother\'s surgery next week.', status: 'New', date: '10/27/2023', isAnonymous: false }
+            ]);
+            const [users, setUsers] = useState([
+                { id: 1, username: 'admin', password: '123', role: 'Pastor' },
+                { id: 2, username: 'treasurer', password: '123', role: 'Church Treasurer' },
+                { id: 3, username: 'youth_lead', password: '123', role: 'Youth Treasurer' },
+                { id: 4, username: 'womens_lead', password: '123', role: "Women's Treasurer" },
+                { id: 5, username: 'mens_lead', password: '123', role: "Men's Treasurer" },
+                { id: 6, username: 'tech', password: '123', role: 'TechSupp' }
+            ]);
+
+            const handleAddMember = (m) => setMembers([...members, m]);
+            const handleAddTransaction = (t) => setTransactions(prev => [...prev, t]);
+            const handleUpdateTransaction = (u) => setTransactions(prev => prev.map(t => t.id === u.id ? { ...t, ...u } : t));
+            const handleDeleteTransaction = (id) => setTransactions(prev => prev.filter(t => t.id !== id));
+            const handleAddEvent = (e) => setEvents([...events, e]);
+            const handleUpdateEvent = (updatedEvent) => setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+            const handleDeleteEvent = (id) => setEvents(events.filter(e => e.id !== id));
+            const handleAddRegistration = (reg) => setRegistrations([reg, ...registrations]);
+            const handleAddPrayerRequest = (r) => setPrayerRequests([r, ...prayerRequests]);
+            const handleUpdatePrayerRequest = (id, s) => setPrayerRequests(prev => prev.map(r => r.id === id ? { ...r, status: s } : r));
+            const handleAddUser = (u) => setUsers([...users, u]);
+            const handleUpdateUser = (u) => setUsers(users.map(user => user.id === u.id ? u : user));
+            const handleDeleteUser = (id) => setUsers(users.filter(u => u.id !== id));
+
+            const handleLogin = (user) => {
+                setCurrentUser(user);
+                setShowLogin(false);
+                setView('admin');
+            };
+
+            useEffect(() => { window.scrollTo(0, 0); }, [view]);
+
+            return (
+                <>
+                {showLogin && <LoginScreen onLogin={handleLogin} onCancel={() => setShowLogin(false)} users={users} />}
+                {view === 'admin' && currentUser ? (
+                    <AdminDashboard 
+                    onLogout={() => { setView('public'); setCurrentUser(null); }} 
+                    members={members} onAddMember={handleAddMember}
+                    transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onDeleteTransaction={handleDeleteTransaction}
+                    events={events} registrations={registrations} onAddEvent={handleAddEvent} onUpdateEvent={handleUpdateEvent} onDeleteEvent={handleDeleteEvent}
+                    prayerRequests={prayerRequests} onUpdatePrayerRequest={handleUpdatePrayerRequest}
+                    users={users} onAddUser={handleAddUser} onUpdateUser={handleUpdateUser} onDeleteUser={handleDeleteUser}
+                    currentUser={currentUser}
+                    />
+                ) : (
+                    <PublicWebsite onOpenLogin={() => setShowLogin(true)} events={events} onAddPrayerRequest={handleAddPrayerRequest} onAddRegistration={handleAddRegistration} />
+                )}
+                </>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ChurchApp />);
+        
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                .then(registration => console.log('SW registered'))
+                .catch(err => console.log('SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>
