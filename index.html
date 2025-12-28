@@ -11,7 +11,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="EWM Church">
-    <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1438232992991-995b7058bbb3?w=192&h=192&fit=crop">
+    <link rel="apple-touch-icon" href="icon-512.jpg">
+    <link rel="icon" type="image/jpg" href="icon-512.jpg">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -19,19 +20,51 @@
     <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <!-- Report Generation Libraries -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
     <style>
         /* Smooth scrolling and font adjustments */
         html { scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        
+        /* Error Container Styles */
+        #error-container { display: none; padding: 20px; background: #fee2e2; color: #991b1b; position: fixed; top: 0; left: 0; width: 100%; z-index: 9999; font-family: monospace; border-bottom: 2px solid #7f1d1d; }
+
+        /* Print Specific Styles for Reports (Fallback) */
+        @media print {
+            body * { visibility: hidden; }
+            #report-print-area, #report-print-area * { visibility: visible; }
+            #report-print-area { position: absolute; left: 0; top: 0; width: 100%; height: 100%; padding: 20px; background: white; z-index: 9999; }
+            .no-print { display: none !important; }
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
+    <div id="error-container"></div>
     <div id="root"></div>
+
+    <!-- Error Handler Script -->
+    <script>
+        function showError(msg) {
+            const container = document.getElementById('error-container');
+            container.style.display = 'block';
+            container.innerHTML += '<div><strong>Error:</strong> ' + msg + '</div>';
+            console.error(msg);
+        }
+        window.addEventListener('error', function(event) {
+            showError(event.message + (event.lineno ? ' (Line: ' + event.lineno + ')' : ''));
+        });
+        window.addEventListener('unhandledrejection', function(event) {
+            showError('Async Error: ' + (event.reason ? event.reason.message : event.reason));
+        });
+    </script>
 
     <!-- Application Logic -->
     <script type="text/babel" data-type="module">
-        import React, { useState, useEffect, useMemo } from 'https://esm.sh/react@18.2.0';
-        import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
+        import React, { useState, useEffect, useMemo, useRef } from 'https://esm.sh/react@18.2.0';
+        import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client?deps=react@18.2.0';
         import { 
             Users, Calendar, DollarSign, Video, Settings, Menu, X, Bell, Search, 
             ChevronRight, ArrowUpRight, ArrowDownRight, Heart, UserPlus, BookOpen, 
@@ -39,12 +72,39 @@
             ArrowRight, LogOut, Trash2, Edit, Plus, Briefcase, TrendingUp, 
             TrendingDown, Lock, AlertCircle, FileText, PieChart, Filter, 
             BarChart3, MessageCircle, CheckCircle, Map, Repeat, ChevronLeft, 
-            MoreVertical, Timer, UserCheck
-        } from 'https://esm.sh/lucide-react@0.292.0';
+            MoreVertical, Timer, UserCheck, CheckSquare, Square, Printer, Download, Share2
+        } from 'https://esm.sh/lucide-react@0.292.0?deps=react@18.2.0';
 
-        // --- COPY OF THE REACT COMPONENT CODE STARTS HERE ---
+        // --- FIREBASE INITIALIZATION ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+        import { getAuth } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-analytics.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBjK3NqQ_Mnq0UhwPRTfKvfHqgefea1GE4",
+            authDomain: "ewmwebsite-a9d14.firebaseapp.com",
+            projectId: "ewmwebsite-a9d14",
+            storageBucket: "ewmwebsite-a9d14.firebasestorage.app",
+            messagingSenderId: "105322791826",
+            appId: "1:105322791826:web:ccd09082b15ade6154b74b",
+            measurementId: "G-D5KZY1LJCB"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
         
-        // 1. SHARED UTILITIES & MODALS
+        let analytics;
+        try {
+            analytics = getAnalytics(app);
+        } catch (e) {
+            console.log("Analytics disabled or not supported in this environment");
+        }
+
+        // --- COMPONENTS START ---
+        
         const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
             if (!isOpen) return null;
             return (
@@ -66,6 +126,7 @@
             );
         };
 
+        // ... (ViewRegistrationsModal, EventRegistrationModal, SuccessToast, EditTransactionModal, EditEventModal, ReportModal, CalendarWidget, AdminSidebarItem, AdminStatCard, CongregationManager, FundsManager, EventsManager, PrayerRequestManager, RoleMultiSelect, UserModal, SettingsManager code remains same)
         const ViewRegistrationsModal = ({ isOpen, onClose, event, registrations }) => {
             if (!isOpen || !event) return null;
             const eventRegistrations = registrations ? registrations.filter(r => r.eventId === event.id) : [];
@@ -345,6 +406,7 @@
 
         const ReportModal = ({ onClose, fundName, transactions }) => {
             const [groupBy, setGroupBy] = useState('month'); 
+            const [isGenerating, setIsGenerating] = useState(false);
 
             const reportData = useMemo(() => {
                 const data = {};
@@ -376,7 +438,7 @@
                 }
                 
                 if (!data[key]) {
-                    data[key] = { income: 0, expense: 0, dateStr: key, displayDate };
+                    data[key] = { income: 0, expense: 0, dateStr: key, displayDate, transactions: [] };
                 }
                 
                 const amount = parseFloat(t.amount);
@@ -388,6 +450,7 @@
                     data[key].expense += amount;
                     grandTotalExpense += amount;
                 }
+                data[key].transactions.push(t);
                 });
 
                 return {
@@ -395,15 +458,48 @@
                 summary: {
                     income: grandTotalIncome,
                     expense: grandTotalExpense,
-                    net: grandTotalIncome - grandTotalExpense
+                    net: grandTotalIncome - grandTotalExpense,
+                    count: transactions.length
                 }
                 };
             }, [transactions, groupBy]);
 
+            const handleDownloadPDF = async () => {
+                setIsGenerating(true);
+                const element = document.getElementById('report-print-area');
+                if (!element) return;
+
+                try {
+                    const canvas = await html2canvas(element, { 
+                        scale: 2,
+                        backgroundColor: '#ffffff',
+                        logging: false
+                    });
+                    const imgData = canvas.toDataURL('image/png');
+                    
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF('p', 'mm', 'a4');
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                    
+                    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                    pdf.save(`${fundName.replace(/\s+/g, '_')}_Report.pdf`);
+                } catch (error) {
+                    console.error("Error generating PDF:", error);
+                    alert("Could not generate PDF. Please try the Print option instead.");
+                } finally {
+                    setIsGenerating(false);
+                }
+            };
+
+            const handlePrint = () => {
+                window.print();
+            };
+
             return (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full overflow-hidden flex flex-col max-h-[90vh]">
-                    <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div className="bg-white rounded-2xl shadow-xl max-w-5xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 no-print">
                     <div className="flex items-center gap-3">
                         <div className="bg-blue-100 p-2 rounded-lg text-blue-600"><BarChart3 size={24} /></div>
                         <div>
@@ -417,72 +513,104 @@
                         <button onClick={() => setGroupBy('week')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${groupBy === 'week' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Weekly</button>
                         <button onClick={() => setGroupBy('month')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${groupBy === 'month' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Monthly</button>
                         </div>
+                        <button 
+                            onClick={handleDownloadPDF} 
+                            disabled={isGenerating}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+                        >
+                            {isGenerating ? <div className="w-3 h-3 border-2 border-white/50 border-t-white rounded-full animate-spin"></div> : <Download size={14} />}
+                            {isGenerating ? 'Saving...' : 'Save as PDF'}
+                        </button>
+                        <button onClick={handlePrint} className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md hover:bg-slate-900 transition-colors">
+                            <Printer size={14} /> Print
+                        </button>
                         <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X size={20} /></button>
                     </div>
                     </div>
                     
-                    <div className="p-6 overflow-y-auto bg-slate-50/50">
-                    <div className="grid grid-cols-3 gap-4 mb-8">
-                        <div className="bg-white p-4 rounded-xl border border-green-100 shadow-sm">
-                        <p className="text-xs font-bold text-green-600 uppercase tracking-wider mb-1">Total Income</p>
-                        <p className="text-2xl font-bold text-slate-800">₱{reportData.summary.income.toLocaleString()}</p>
+                    <div className="p-6 overflow-y-auto bg-slate-50/50" id="report-print-area">
+                        {/* Slide / PPT Style Header */}
+                        <div className="mb-8 text-center border-b-2 border-blue-600 pb-4">
+                            <div className="flex items-center justify-center gap-3 mb-2">
+                                <img src="icon-512.jpg" alt="Logo" className="w-12 h-12 rounded-lg" />
+                                <h1 className="text-3xl font-bold text-slate-900 uppercase tracking-tight">Elect Word Ministry</h1>
+                            </div>
+                            <h2 className="text-xl font-medium text-slate-600">Fund Report: <span className="text-blue-600 font-bold">{fundName}</span></h2>
+                            <p className="text-sm text-slate-400 mt-1">Generated on {new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                         </div>
-                        <div className="bg-white p-4 rounded-xl border border-red-100 shadow-sm">
-                        <p className="text-xs font-bold text-red-600 uppercase tracking-wider mb-1">Total Expenses</p>
-                        <p className="text-2xl font-bold text-slate-800">₱{reportData.summary.expense.toLocaleString()}</p>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl border border-blue-100 shadow-sm">
-                        <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">Net Balance</p>
-                        <p className={`text-2xl font-bold ${reportData.summary.net >= 0 ? 'text-slate-800' : 'text-red-500'}`}>{reportData.summary.net >= 0 ? '+' : ''}₱{reportData.summary.net.toLocaleString()}</p>
-                        </div>
-                    </div>
 
-                    {reportData.rows.length > 0 ? (
-                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-slate-50 text-slate-500 uppercase text-xs font-bold border-b border-slate-200">
-                            <tr>
-                                <th className="px-6 py-4">Period</th>
-                                <th className="px-6 py-4 text-right text-green-600">Income</th>
-                                <th className="px-6 py-4 text-right text-red-600">Expenses</th>
-                                <th className="px-6 py-4 text-right">Net Flow</th>
-                                <th className="px-6 py-4 w-32 text-center">Visual</th>
-                            </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                            {reportData.rows.map((row) => {
-                                const net = row.income - row.expense;
-                                const maxVal = Math.max(row.income, row.expense) || 1; 
-                                const incomePct = (row.income / maxVal) * 100;
-                                const expensePct = (row.expense / maxVal) * 100;
+                        {/* Slide Stats Grid */}
+                        <div className="grid grid-cols-4 gap-4 mb-8">
+                            <div className="bg-white p-6 rounded-xl border border-green-100 shadow-sm text-center">
+                                <p className="text-xs font-bold text-green-600 uppercase tracking-wider mb-2">Total Income</p>
+                                <p className="text-3xl font-bold text-slate-800">₱{reportData.summary.income.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl border border-red-100 shadow-sm text-center">
+                                <p className="text-xs font-bold text-red-600 uppercase tracking-wider mb-2">Total Expenses</p>
+                                <p className="text-3xl font-bold text-slate-800">₱{reportData.summary.expense.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl border border-blue-100 shadow-sm text-center">
+                                <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Net Balance</p>
+                                <p className={`text-3xl font-bold ${reportData.summary.net >= 0 ? 'text-slate-800' : 'text-red-500'}`}>{reportData.summary.net >= 0 ? '+' : ''}₱{reportData.summary.net.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm text-center">
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Transactions</p>
+                                <p className="text-3xl font-bold text-slate-800">{reportData.summary.count}</p>
+                            </div>
+                        </div>
 
-                                return (
-                                <tr key={row.dateStr} className="hover:bg-slate-50 transition-colors">
-                                    <td className="px-6 py-4 font-bold text-slate-700 border-r border-slate-50">{row.displayDate}</td>
-                                    <td className="px-6 py-4 text-right font-mono text-slate-600">₱{row.income.toLocaleString()}</td>
-                                    <td className="px-6 py-4 text-right font-mono text-slate-600">₱{row.expense.toLocaleString()}</td>
-                                    <td className={`px-6 py-4 text-right font-bold font-mono ${net >= 0 ? 'text-blue-600' : 'text-red-500'}`}>{net >= 0 ? '+' : ''}₱{net.toLocaleString()}</td>
-                                    <td className="px-6 py-4">
-                                    <div className="flex flex-col gap-1 w-full h-8 justify-center">
-                                        {row.income > 0 && <div className="h-1.5 bg-green-400 rounded-full" style={{ width: `${incomePct}%` }}></div>}
-                                        {row.expense > 0 && <div className="h-1.5 bg-red-400 rounded-full" style={{ width: `${expensePct}%` }}></div>}
-                                    </div>
-                                    </td>
-                                </tr>
-                                );
-                            })}
-                            </tbody>
-                        </table>
+                        {/* Breakdown Chart / Table */}
+                        {reportData.rows.length > 0 ? (
+                            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                                <div className="p-4 bg-slate-50 border-b border-slate-200 font-bold text-slate-700 text-sm uppercase">Detailed Breakdown by Period</div>
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-slate-50 text-slate-500 uppercase text-xs font-bold border-b border-slate-200">
+                                    <tr>
+                                        <th className="px-6 py-4">Period</th>
+                                        <th className="px-6 py-4 text-right text-green-600">Income</th>
+                                        <th className="px-6 py-4 text-right text-red-600">Expenses</th>
+                                        <th className="px-6 py-4 text-right">Net Flow</th>
+                                        <th className="px-6 py-4 w-32 text-center">Distribution</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                    {reportData.rows.map((row) => {
+                                        const net = row.income - row.expense;
+                                        const maxVal = Math.max(row.income, row.expense) || 1; 
+                                        const incomePct = (row.income / maxVal) * 100;
+                                        const expensePct = (row.expense / maxVal) * 100;
+
+                                        return (
+                                        <tr key={row.dateStr} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-4 font-bold text-slate-700 border-r border-slate-50">{row.displayDate}</td>
+                                            <td className="px-6 py-4 text-right font-mono text-slate-600">₱{row.income.toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-right font-mono text-slate-600">₱{row.expense.toLocaleString()}</td>
+                                            <td className={`px-6 py-4 text-right font-bold font-mono ${net >= 0 ? 'text-blue-600' : 'text-red-500'}`}>{net >= 0 ? '+' : ''}₱{net.toLocaleString()}</td>
+                                            <td className="px-6 py-4">
+                                            <div className="flex flex-col gap-1 w-full h-8 justify-center">
+                                                {row.income > 0 && <div className="h-1.5 bg-green-400 rounded-full" style={{ width: `${incomePct}%` }}></div>}
+                                                {row.expense > 0 && <div className="h-1.5 bg-red-400 rounded-full" style={{ width: `${expensePct}%` }}></div>}
+                                            </div>
+                                            </td>
+                                        </tr>
+                                        );
+                                    })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="text-center py-12 text-slate-400 bg-white rounded-xl border border-slate-200 border-dashed">
+                            <PieChart size={48} className="mx-auto mb-2 opacity-50" />
+                            <p>No transaction data found for this view.</p>
+                            </div>
+                        )}
+
+                        <div className="mt-8 text-center text-xs text-slate-400 italic">
+                            Report generated automatically by Elect Word Ministry App.
                         </div>
-                    ) : (
-                        <div className="text-center py-12 text-slate-400 bg-white rounded-xl border border-slate-200 border-dashed">
-                        <PieChart size={48} className="mx-auto mb-2 opacity-50" />
-                        <p>No transaction data found for this view.</p>
-                        </div>
-                    )}
                     </div>
                     
-                    <div className="p-4 border-t border-slate-100 bg-white text-right">
+                    <div className="p-4 border-t border-slate-100 bg-white text-right no-print">
                     <button onClick={onClose} className="px-6 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 font-medium transition-colors">Close Report</button>
                     </div>
                 </div>
@@ -617,6 +745,7 @@
                         <option value="Worship Team">Worship Team</option>
                         <option value="Usher">Usher</option>
                         <option value="Youth">Youth</option>
+                        <option value="Pastor">Pastor</option>
                         </select>
                         <input type="text" placeholder="Contact (Email/Phone)" className="px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none" value={newMember.contact} onChange={e => setNewMember({...newMember, contact: e.target.value})} />
                         <div className="md:col-span-3 flex justify-end gap-2 mt-2">
@@ -670,11 +799,17 @@
             const allFunds = [
                 { id: 'offering', label: 'General Offering', allowedRoles: ['Pastor', 'Admin', 'Church Treasurer'] },
                 { id: 'youth', label: 'Youth Fund', allowedRoles: ['Pastor', 'Admin', 'Youth Treasurer'] },
+                { id: 'food', label: 'Food Fund', allowedRoles: ['Pastor', 'Admin', 'Youth Treasurer'] },
                 { id: 'womens', label: "Women's Fund", allowedRoles: ['Pastor', 'Admin', "Women's Treasurer"] },
                 { id: 'mens', label: "Men's Fund", allowedRoles: ['Pastor', 'Admin', "Men's Treasurer"] },
+                { id: 'music', label: "Music Fund", allowedRoles: ['Pastor', 'Admin', "Music Treasurer"] },
+                { id: 'pledges', label: "Pledges", allowedRoles: ['Pastor', 'Admin', "Pledges Treasurer"] },
             ];
 
-            const visibleFunds = allFunds.filter(fund => fund.allowedRoles.includes(currentUser.role));
+            // UPDATED: Check if user has any of the allowed roles
+            const visibleFunds = allFunds.filter(fund => 
+                fund.allowedRoles.some(role => currentUser.roles.includes(role))
+            );
 
             useEffect(() => {
                 if (visibleFunds.length > 0 && !activeFundTab) {
@@ -837,65 +972,6 @@
                         </tbody>
                         </table>
                     </div>
-                    </div>
-                </div>
-                </div>
-            );
-        };
-
-        const PrayerRequestManager = ({ requests, onUpdateRequest }) => {
-            const handleStatusChange = (id, newStatus) => {
-                onUpdateRequest(id, newStatus);
-            };
-
-            return (
-                <div className="space-y-6">
-                <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-                    <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
-                    <MessageCircle size={20} className="text-purple-600" /> Prayer Requests
-                    </h3>
-                    <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50 text-slate-500 font-medium">
-                        <tr>
-                            <th className="px-6 py-4">Date</th>
-                            <th className="px-6 py-4">Name</th>
-                            <th className="px-6 py-4">Request</th>
-                            <th className="px-6 py-4">Status</th>
-                            <th className="px-6 py-4 text-right">Actions</th>
-                        </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                        {requests.map((req) => (
-                            <tr key={req.id} className="hover:bg-slate-50">
-                            <td className="px-6 py-4 text-slate-500 whitespace-nowrap">{req.date}</td>
-                            <td className="px-6 py-4 font-bold text-slate-700">{req.isAnonymous ? 'Anonymous' : req.name}</td>
-                            <td className="px-6 py-4 text-slate-600 max-w-xs truncate" title={req.message}>{req.message}</td>
-                            <td className="px-6 py-4">
-                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                                req.status === 'New' ? 'bg-blue-100 text-blue-700' : 
-                                req.status === 'Prayed' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
-                                }`}>
-                                {req.status}
-                                </span>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                                {req.status !== 'Prayed' && (
-                                <button 
-                                    onClick={() => handleStatusChange(req.id, 'Prayed')}
-                                    className="text-green-600 hover:text-green-800 text-xs font-medium mr-3 flex items-center gap-1 float-right"
-                                >
-                                    <CheckCircle size={14} /> Mark Prayed
-                                </button>
-                                )}
-                            </td>
-                            </tr>
-                        ))}
-                        {requests.length === 0 && (
-                            <tr><td colSpan="5" className="text-center py-8 text-slate-400">No prayer requests yet.</td></tr>
-                        )}
-                        </tbody>
-                    </table>
                     </div>
                 </div>
                 </div>
@@ -1137,64 +1213,449 @@
             );
         };
 
-        const SermonManager = () => {
-            const [youtubeId, setYoutubeId] = useState('');
-            
-            return (
-                <div className="max-w-2xl mx-auto space-y-6">
-                <div className="bg-white p-8 rounded-xl border border-slate-100 shadow-sm">
-                    <div className="flex items-center gap-3 mb-6">
-                    <div className="bg-red-600 text-white p-3 rounded-lg"><Youtube size={24} /></div>
-                    <div>
-                        <h3 className="font-bold text-slate-800 text-lg">YouTube Integration</h3>
-                        <p className="text-slate-500 text-sm">Connect your channel to display sermons.</p>
-                    </div>
-                    </div>
+        const PrayerRequestManager = ({ requests, onUpdateRequest }) => {
+            const handleStatusChange = (id, newStatus) => {
+                onUpdateRequest(id, newStatus);
+            };
 
-                    <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Latest Sermon Video ID</label>
-                        <div className="flex gap-2">
-                        <input 
-                            type="text" 
-                            placeholder="e.g., dQw4w9WgXcQ" 
-                            className="flex-1 px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-red-500 focus:outline-none font-mono text-sm"
-                            value={youtubeId}
-                            onChange={(e) => setYoutubeId(e.target.value)}
-                        />
-                        <button className="bg-red-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-red-700">Update</button>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-2">
-                        Enter the 11-character ID found at the end of your YouTube URL (e.g., youtube.com/watch?v=<b>ID_HERE</b>)
-                        </p>
-                    </div>
+            return (
+                <div className="space-y-6">
+                <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
+                    <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                    <MessageCircle size={20} className="text-purple-600" /> Prayer Requests
+                    </h3>
+                    <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-slate-50 text-slate-500 font-medium">
+                        <tr>
+                            <th className="px-6 py-4">Date</th>
+                            <th className="px-6 py-4">Name</th>
+                            <th className="px-6 py-4">Request</th>
+                            <th className="px-6 py-4">Status</th>
+                            <th className="px-6 py-4 text-right">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                        {requests.map((req) => (
+                            <tr key={req.id} className="hover:bg-slate-50">
+                            <td className="px-6 py-4 text-slate-500 whitespace-nowrap">{req.date}</td>
+                            <td className="px-6 py-4 font-bold text-slate-700">{req.isAnonymous ? 'Anonymous' : req.name}</td>
+                            <td className="px-6 py-4 text-slate-600 max-w-xs truncate" title={req.message}>{req.message}</td>
+                            <td className="px-6 py-4">
+                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                req.status === 'New' ? 'bg-blue-100 text-blue-700' : 
+                                req.status === 'Prayed' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
+                                }`}>
+                                {req.status}
+                                </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                                {req.status !== 'Prayed' && (
+                                <button 
+                                    onClick={() => handleStatusChange(req.id, 'Prayed')}
+                                    className="text-green-600 hover:text-green-800 text-xs font-medium mr-3 flex items-center gap-1 float-right"
+                                >
+                                    <CheckCircle size={14} /> Mark Prayed
+                                </button>
+                                )}
+                            </td>
+                            </tr>
+                        ))}
+                        {requests.length === 0 && (
+                            <tr><td colSpan="5" className="text-center py-8 text-slate-400">No prayer requests yet.</td></tr>
+                        )}
+                        </tbody>
+                    </table>
                     </div>
                 </div>
                 </div>
             );
         };
 
-        const SettingsManager = ({ users, onAddUser, onUpdateUser, onDeleteUser, currentUser }) => {
-            const [formData, setFormData] = useState({ username: '', password: '', role: 'Pastor' });
-            const [editingId, setEditingId] = useState(null);
-            const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+        const PublicSermonsPage = ({ sermonData }) => {
+            const { liveVideoId, pastSermons } = sermonData;
+            
+            return (
+                <div className="bg-slate-50 min-h-[80vh] py-12">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        {/* Live Section */}
+                        {liveVideoId && (
+                            <div className="mb-16 animate-in fade-in slide-in-from-top-4 duration-700">
+                                <div className="flex items-center gap-3 mb-6">
+                                    <span className="flex h-3 w-3 relative">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                                    </span>
+                                    <h2 className="text-2xl font-bold text-slate-900 uppercase tracking-wide">Live Now</h2>
+                                </div>
+                                <div className="aspect-video w-full rounded-2xl overflow-hidden shadow-2xl bg-black border-4 border-white ring-1 ring-slate-200">
+                                    <iframe 
+                                        className="w-full h-full"
+                                        src={`https://www.youtube.com/embed/${liveVideoId}?autoplay=1`}
+                                        title="Live Stream"
+                                        frameBorder="0"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                    ></iframe>
+                                </div>
+                            </div>
+                        )}
 
-            const isHighAuth = currentUser.role === 'Pastor' || currentUser.role === 'Admin';
+                        {/* Past Sermons */}
+                        <div>
+                            <h2 className="text-2xl font-bold text-slate-900 mb-8 flex items-center gap-3 border-b border-slate-200 pb-4">
+                                <div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><Video size={24} /></div>
+                                Previous Sermons
+                            </h2>
+                            
+                            {pastSermons.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                    {pastSermons.map((video, idx) => (
+                                        <div key={idx} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col h-full">
+                                            <div className="aspect-video bg-slate-900 relative group-hover:opacity-100 transition-opacity">
+                                                <img 
+                                                    src={`https://img.youtube.com/vi/${video.id}/mqdefault.jpg`} 
+                                                    alt={video.title}
+                                                    className="w-full h-full object-cover opacity-80 group-hover:opacity-60 transition-opacity"
+                                                />
+                                                <a 
+                                                    href={`https://www.youtube.com/watch?v=${video.id}`} 
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="absolute inset-0 flex items-center justify-center"
+                                                >
+                                                    <div className="w-14 h-14 bg-white/90 rounded-full flex items-center justify-center text-red-600 shadow-lg scale-90 group-hover:scale-110 transition-transform">
+                                                        <PlayCircle size={32} fill="currentColor" className="text-white fill-red-600 ml-1" />
+                                                    </div>
+                                                </a>
+                                                <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded font-medium">
+                                                    YouTube
+                                                </div>
+                                            </div>
+                                            <div className="p-5 flex-1 flex flex-col">
+                                                <h3 className="font-bold text-slate-800 text-lg mb-2 line-clamp-2 leading-snug group-hover:text-blue-600 transition-colors">{video.title}</h3>
+                                                <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between text-sm text-slate-500">
+                                                    <span className="flex items-center gap-1.5"><Calendar size={14} /> {video.date}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                                    <div className="w-16 h-16 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <Video size={32} />
+                                    </div>
+                                    <p className="text-slate-500 font-medium">No previous sermons found.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const SermonManager = ({ sermonData, onUpdateSettings, onArchive }) => {
+            const [localLiveId, setLocalLiveId] = useState(sermonData?.liveVideoId || '');
+            const [localApiKey, setLocalApiKey] = useState(sermonData?.apiKey || '');
+            const [archiveTitle, setArchiveTitle] = useState('');
+
+            // Update local state if props change (e.g. initial load)
+            useEffect(() => {
+                if (sermonData) {
+                    setLocalLiveId(sermonData.liveVideoId || '');
+                    setLocalApiKey(sermonData.apiKey || '');
+                }
+            }, [sermonData]);
+
+            const handleSave = () => {
+                onUpdateSettings({ liveVideoId: localLiveId, apiKey: localApiKey });
+                alert("Settings Saved!");
+            };
+
+            const handleArchive = () => {
+                if (!localLiveId) return;
+                const video = {
+                    id: localLiveId,
+                    title: archiveTitle || `Sunday Service - ${new Date().toLocaleDateString()}`,
+                    date: new Date().toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })
+                };
+                onArchive(video);
+                // Clear live ID after archiving
+                setLocalLiveId('');
+                setArchiveTitle('');
+                onUpdateSettings({ liveVideoId: '', apiKey: localApiKey }); 
+            };
+            
+            return (
+                <div className="max-w-4xl mx-auto space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Live Settings Card */}
+                        <div className="bg-white p-8 rounded-xl border border-slate-100 shadow-sm">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="bg-red-600 text-white p-3 rounded-lg"><Youtube size={24} /></div>
+                                <div>
+                                    <h3 className="font-bold text-slate-800 text-lg">Live Stream Configuration</h3>
+                                    <p className="text-slate-500 text-sm">Manage current live video.</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-5">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Live Video ID</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="e.g., dQw4w9WgXcQ" 
+                                        className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-red-500 focus:outline-none font-mono text-sm"
+                                        value={localLiveId}
+                                        onChange={(e) => setLocalLiveId(e.target.value)}
+                                    />
+                                    <p className="text-xs text-slate-400 mt-1">Found in URL: youtube.com/watch?v=<b>ID</b></p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">YouTube API Key (Optional)</label>
+                                    <input 
+                                        type="password" 
+                                        placeholder="AIzaSy..." 
+                                        className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-red-500 focus:outline-none font-mono text-sm"
+                                        value={localApiKey}
+                                        onChange={(e) => setLocalApiKey(e.target.value)}
+                                    />
+                                </div>
+                                
+                                <button 
+                                    onClick={handleSave}
+                                    className="w-full bg-slate-800 text-white py-2.5 rounded-lg font-bold hover:bg-slate-900 transition-colors"
+                                >
+                                    Save Configuration
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Archive Actions Card */}
+                        <div className="bg-white p-8 rounded-xl border border-slate-100 shadow-sm flex flex-col">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="bg-blue-600 text-white p-3 rounded-lg"><Video size={24} /></div>
+                                <div>
+                                    <h3 className="font-bold text-slate-800 text-lg">Stream Actions</h3>
+                                    <p className="text-slate-500 text-sm">End stream and save to history.</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-5 flex-1">
+                                <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-lg text-sm text-yellow-800">
+                                    <h5 className="font-bold mb-1 flex items-center gap-2"><AlertCircle size={16}/> Current Status</h5>
+                                    {sermonData?.liveVideoId ? (
+                                        <p>You are currently <b>LIVE</b> with ID: <span className="font-mono">{sermonData.liveVideoId}</span></p>
+                                    ) : (
+                                        <p>No active live stream configured.</p>
+                                    )}
+                                </div>
+
+                                {sermonData?.liveVideoId && (
+                                    <div className="animate-in fade-in slide-in-from-top-2">
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Archive Title</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder="e.g. Sunday Worship Service" 
+                                            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none mb-3"
+                                            value={archiveTitle}
+                                            onChange={(e) => setArchiveTitle(e.target.value)}
+                                        />
+                                        <button 
+                                            onClick={handleArchive}
+                                            className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            <CheckSquare size={18} /> End Stream & Archive
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Recent History Preview */}
+                    <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 font-bold text-slate-700">
+                            Recent History
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                            {sermonData?.pastSermons?.slice(0, 3).map((vid, i) => (
+                                <div key={i} className="px-6 py-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-24 h-14 bg-slate-200 rounded overflow-hidden">
+                                            <img src={`https://img.youtube.com/vi/${vid.id}/default.jpg`} className="w-full h-full object-cover" />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-slate-800">{vid.title}</p>
+                                            <p className="text-xs text-slate-500">{vid.date}</p>
+                                        </div>
+                                    </div>
+                                    <span className="font-mono text-xs text-slate-400">{vid.id}</span>
+                                </div>
+                            ))}
+                            {(!sermonData?.pastSermons || sermonData.pastSermons.length === 0) && (
+                                <div className="px-6 py-8 text-center text-slate-400 italic">History is empty.</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const RoleMultiSelect = ({ selectedRoles, onChange }) => {
+            const [isOpen, setIsOpen] = useState(false);
+            const roles = [
+                'Pastor', 'Admin', 'TechSupp',
+                'Church Treasurer', 'Youth Treasurer',
+                "Women's Treasurer", "Men's Treasurer",
+                'Music Treasurer', 'Pledges Treasurer'
+            ];
+
+            const toggleRole = (role) => {
+                const newRoles = selectedRoles.includes(role)
+                    ? selectedRoles.filter(r => r !== role)
+                    : [...selectedRoles, role];
+                onChange(newRoles);
+            };
+
+            return (
+                <div className="relative w-full">
+                    <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Roles</label>
+                    <button 
+                        type="button"
+                        onClick={() => setIsOpen(!isOpen)}
+                        className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-blue-500 bg-white text-left text-sm flex justify-between items-center"
+                    >
+                        <span className="truncate block max-w-[180px]">
+                            {selectedRoles.length > 0 ? `${selectedRoles.length} Selected` : 'Select Roles'}
+                        </span>
+                        <ChevronRight size={16} className={`transform transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                    </button>
+                    
+                    {isOpen && (
+                        <>
+                            <div className="fixed inset-0 z-30" onClick={() => setIsOpen(false)}></div>
+                            <div className="absolute bottom-full mb-2 left-0 w-full bg-white border border-slate-200 rounded-xl shadow-xl z-40 max-h-48 overflow-y-auto p-2">
+                                {roles.map(role => (
+                                    <div 
+                                        key={role} 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleRole(role);
+                                        }}
+                                        className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer select-none"
+                                    >
+                                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedRoles.includes(role) ? 'bg-blue-600 border-blue-600' : 'border-slate-300'}`}>
+                                            {selectedRoles.includes(role) && <CheckSquare size={12} className="text-white" />}
+                                        </div>
+                                        <span className="text-sm text-slate-700">{role}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
+            );
+        };
+
+        // NEW: User Modal for Create/Edit
+        const UserModal = ({ isOpen, onClose, user, onSave }) => {
+            const [formData, setFormData] = useState({ username: '', password: '', roles: [] });
+
+            useEffect(() => {
+                if (user) {
+                    setFormData({ 
+                        username: user.username, 
+                        password: user.password, 
+                        roles: user.roles || [] 
+                    });
+                } else {
+                    setFormData({ username: '', password: '', roles: [] });
+                }
+            }, [user, isOpen]);
 
             const handleSubmit = (e) => {
                 e.preventDefault();
-                if (editingId) {
-                onUpdateUser({ ...formData, id: editingId });
-                setEditingId(null);
-                } else {
-                onAddUser({ ...formData, id: Date.now() });
-                }
-                setFormData({ username: '', password: '', role: 'Pastor' });
+                onSave({ ...user, ...formData }); 
+                onClose();
             };
 
-            const handleEdit = (user) => {
-                setFormData({ username: user.username, password: user.password, role: user.role });
-                setEditingId(user.id);
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 scale-100 animate-in zoom-in-95 duration-200 relative">
+                        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X size={20}/></button>
+                        <h3 className="font-bold text-lg text-slate-800 mb-6 flex items-center gap-2">
+                            {user ? <Edit size={20} className="text-blue-600" /> : <UserPlus size={20} className="text-blue-600" />}
+                            {user ? 'Edit User' : 'Create New User'}
+                        </h3>
+                        
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Username</label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-blue-500"
+                                    value={formData.username}
+                                    onChange={e => setFormData({...formData, username: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Password</label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-blue-500"
+                                    value={formData.password}
+                                    onChange={e => setFormData({...formData, password: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <RoleMultiSelect 
+                                    selectedRoles={formData.roles} 
+                                    onChange={(newRoles) => setFormData({...formData, roles: newRoles})}
+                                />
+                            </div>
+                            
+                            <div className="flex justify-end gap-3 pt-4">
+                                <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">Cancel</button>
+                                <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm">
+                                    {user ? 'Save Changes' : 'Create User'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        const SettingsManager = ({ users, onAddUser, onUpdateUser, onDeleteUser, currentUser }) => {
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [userToEdit, setUserToEdit] = useState(null);
+            const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+
+            const isHighAuth = currentUser.roles.includes('Pastor') || currentUser.roles.includes('Admin');
+
+            const handleSaveUser = (userData) => {
+                if (userData.id) {
+                    onUpdateUser(userData);
+                } else {
+                    onAddUser({ ...userData, id: Date.now() });
+                }
+            };
+
+            const openCreateModal = () => {
+                setUserToEdit(null);
+                setIsModalOpen(true);
+            };
+
+            const openEditModal = (user) => {
+                setUserToEdit(user);
+                setIsModalOpen(true);
             };
 
             const confirmDelete = () => {
@@ -1210,6 +1671,13 @@
 
             return (
                 <div className="space-y-8">
+                <UserModal 
+                    isOpen={isModalOpen} 
+                    onClose={() => setIsModalOpen(false)} 
+                    user={userToEdit} 
+                    onSave={handleSaveUser} 
+                />
+                
                 <ConfirmationModal 
                     isOpen={!!deleteConfirmId}
                     title="Delete User?"
@@ -1219,14 +1687,22 @@
                 />
 
                 <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-                    <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2"><Settings size={20} /> Admin Accounts</h3>
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="font-bold text-slate-800 flex items-center gap-2"><Settings size={20} /> Admin Accounts</h3>
+                        <button 
+                            onClick={openCreateModal}
+                            className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-slate-800 transition-colors"
+                        >
+                            <UserPlus size={16} /> Create New User
+                        </button>
+                    </div>
                     
-                    <div className="overflow-x-auto mb-8">
+                    <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                         <thead className="bg-slate-50 text-slate-500">
                         <tr>
                             <th className="px-6 py-3 rounded-l-lg">Username</th>
-                            <th className="px-6 py-3">Role</th>
+                            <th className="px-6 py-3">Roles</th>
                             <th className="px-6 py-3">Password</th>
                             <th className="px-6 py-3 rounded-r-lg text-right">Action</th>
                         </tr>
@@ -1235,11 +1711,17 @@
                         {users.map(user => (
                             <tr key={user.id}>
                             <td className="px-6 py-4 font-bold text-slate-700">{user.username}</td>
-                            <td className="px-6 py-4"><span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs uppercase font-bold">{user.role}</span></td>
+                            <td className="px-6 py-4">
+                                <div className="flex flex-wrap gap-1">
+                                    {(user.roles || []).map(role => (
+                                        <span key={role} className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs uppercase font-bold">{role}</span>
+                                    ))}
+                                </div>
+                            </td>
                             <td className="px-6 py-4 font-mono text-slate-400">{user.password}</td>
                             <td className="px-6 py-4 text-right flex justify-end gap-2">
                                 <button 
-                                onClick={() => handleEdit(user)}
+                                onClick={() => openEditModal(user)}
                                 className="text-blue-600 hover:text-blue-800 p-1"
                                 title="Edit"
                                 >
@@ -1260,54 +1742,6 @@
                         </tbody>
                     </table>
                     </div>
-
-                    <div className={`p-6 rounded-xl border ${editingId ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-slate-100'}`}>
-                    <h4 className="font-bold text-slate-700 mb-4 text-sm flex justify-between items-center">
-                        {editingId ? 'Edit Account' : 'Create New Account'}
-                        {editingId && <button onClick={() => { setEditingId(null); setFormData({username:'', password:'', role:'Pastor'}); }} className="text-xs text-red-500 hover:underline">Cancel Edit</button>}
-                    </h4>
-                    <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4 items-end">
-                        <div className="flex-1 w-full">
-                        <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Username</label>
-                        <input 
-                            type="text" 
-                            required 
-                            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-blue-500"
-                            value={formData.username}
-                            onChange={e => setFormData({...formData, username: e.target.value})}
-                        />
-                        </div>
-                        <div className="flex-1 w-full">
-                        <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Password</label>
-                        <input 
-                            type="text" 
-                            required 
-                            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-blue-500"
-                            value={formData.password}
-                            onChange={e => setFormData({...formData, password: e.target.value})}
-                        />
-                        </div>
-                        <div className="w-48">
-                        <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Role</label>
-                        <select 
-                            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-blue-500"
-                            value={formData.role}
-                            onChange={e => setFormData({...formData, role: e.target.value})}
-                        >
-                            <option value="Pastor">Pastor</option>
-                            <option value="Admin">Admin</option>
-                            <option value="TechSupp">Tech Support</option>
-                            <option value="Church Treasurer">Church Treasurer</option>
-                            <option value="Youth Treasurer">Youth Treasurer</option>
-                            <option value="Women's Treasurer">Women's Treasurer</option>
-                            <option value="Men's Treasurer">Men's Treasurer</option>
-                        </select>
-                        </div>
-                        <button className={`${editingId ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-800 hover:bg-slate-900'} text-white px-6 py-2 rounded-lg font-medium min-w-[100px]`}>
-                        {editingId ? 'Update' : 'Create'}
-                        </button>
-                    </form>
-                    </div>
                 </div>
                 </div>
             );
@@ -1319,12 +1753,12 @@
             onAddMember, 
             transactions, 
             onAddTransaction, 
-            onUpdateTransaction,
+            onUpdateTransaction, 
             onDeleteTransaction,
             events, 
             registrations,
             onAddEvent, 
-            onUpdateEvent,
+            onUpdateEvent, 
             onDeleteEvent,
             prayerRequests,
             onUpdatePrayerRequest,
@@ -1332,11 +1766,14 @@
             onAddUser,
             onUpdateUser,
             onDeleteUser,
-            currentUser
+            currentUser,
+            sermonData,           // NEW PROP
+            onUpdateSermonData,    // NEW PROP
+            onArchiveSermon       // NEW PROP
         }) => {
             const getDefaultTab = () => {
-                if (currentUser.role === 'TechSupp') return 'Events';
-                if (currentUser.role.includes('Treasurer')) return 'Funds';
+                if (currentUser.roles.includes('TechSupp')) return 'Events';
+                if (currentUser.roles.some(r => r.includes('Treasurer'))) return 'Funds';
                 return 'Dashboard';
             };
 
@@ -1360,9 +1797,9 @@
                 { label: 'Settings', icon: Settings },
             ];
 
-            const isHighAuth = currentUser.role === 'Pastor' || currentUser.role === 'Admin';
-            const isTech = currentUser.role === 'TechSupp';
-            const isTreasurer = currentUser.role.includes('Treasurer');
+            const isHighAuth = currentUser.roles.includes('Pastor') || currentUser.roles.includes('Admin');
+            const isTech = currentUser.roles.includes('TechSupp');
+            const isTreasurer = currentUser.roles.some(r => r.includes('Treasurer'));
 
             const navItems = allNavItems.filter(item => {
                 if (isHighAuth) return true; 
@@ -1380,7 +1817,8 @@
                 case 'Funds': return <FundsManager transactions={transactions} onAddTransaction={onAddTransaction} onUpdateTransaction={onUpdateTransaction} onDeleteTransaction={onDeleteTransaction} currentUser={currentUser} />;
                 case 'Events': return <EventsManager events={events} registrations={registrations} onAddEvent={onAddEvent} onUpdateEvent={onUpdateEvent} onDeleteEvent={onDeleteEvent} />;
                 case 'Prayer Requests': return <PrayerRequestManager requests={prayerRequests} onUpdateRequest={onUpdatePrayerRequest} />;
-                case 'Sermons': return <SermonManager />;
+                // UPDATED SERMONS TAB
+                case 'Sermons': return <SermonManager sermonData={sermonData} onUpdateSettings={onUpdateSermonData} onArchive={onArchiveSermon} />;
                 case 'Settings': return <SettingsManager users={users} onAddUser={onAddUser} onUpdateUser={onUpdateUser} onDeleteUser={onDeleteUser} currentUser={currentUser} />;
                 case 'Dashboard':
                     return (
@@ -1389,7 +1827,7 @@
                         <AdminStatCard title="Total Congregation" value={totalCongregation} change="+1 this week" isPositive={true} icon={Users} color="bg-blue-100 text-blue-600" />
                         <AdminStatCard title="Total Balance" value={`₱${currentFunds.toLocaleString()}`} change="Net" isPositive={true} icon={DollarSign} color="bg-green-100 text-green-600" />
                         <AdminStatCard title="Prayer Requests" value={newPrayerRequests} change="New" isPositive={true} icon={MessageCircle} color="bg-purple-100 text-purple-600" />
-                        <AdminStatCard title="My Role" value={currentUser.role} change="Logged In" isPositive={true} icon={Briefcase} color="bg-slate-100 text-slate-600" />
+                        <AdminStatCard title="My Role" value={currentUser.roles[0] + (currentUser.roles.length > 1 ? ' +' : '')} change="Logged In" isPositive={true} icon={Briefcase} color="bg-slate-100 text-slate-600" />
                         </div>
                         <div className="flex-1 min-h-[500px]"> 
                         <CalendarWidget events={events} />
@@ -1406,7 +1844,14 @@
 
                 <aside className={`fixed lg:static inset-y-0 left-0 z-30 bg-white border-r border-slate-200 h-full transition-all duration-300 ease-in-out flex flex-col ${sidebarCollapsed ? 'w-[80px]' : 'w-64'} ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
                     <div className={`h-16 flex items-center px-6 border-b border-slate-100 ${sidebarCollapsed ? 'justify-center px-0' : 'justify-between'}`}>
-                    {!sidebarCollapsed ? <div className="flex items-center gap-2"><div className="bg-blue-600 text-white p-1.5 rounded-lg"><Heart size={20} fill="currentColor" /></div><span className="font-bold text-xl tracking-tight text-slate-800">EWM<span className="text-blue-600">Admin</span></span></div> : <div className="bg-blue-600 text-white p-2 rounded-lg"><Heart size={24} fill="currentColor" /></div>}
+                    {!sidebarCollapsed ? (
+                        <div className="flex items-center gap-2">
+                            <img src="icon-512.jpg" alt="Logo" className="w-8 h-8 rounded-lg object-cover" />
+                            <span className="font-bold text-xl tracking-tight text-slate-800">EWM<span className="text-blue-600">Admin</span></span>
+                        </div>
+                    ) : (
+                        <img src="icon-512.jpg" alt="Logo" className="w-10 h-10 rounded-lg object-cover" />
+                    )}
                     <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="hidden lg:flex text-slate-400 hover:text-blue-600 transition-colors">
                         {sidebarCollapsed ? <ChevronRight size={20} /> : <div className="p-1 hover:bg-slate-100 rounded"><X size={16} /></div>}
                     </button>
@@ -1423,7 +1868,7 @@
                         <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
                         {currentUser.username.substring(0, 2).toUpperCase()}
                         </div>
-                        {!sidebarCollapsed && <div className="overflow-hidden"><p className="text-xs font-bold text-slate-800 truncate">{currentUser.username}</p><p className="text-[10px] text-slate-500 truncate uppercase">{currentUser.role}</p></div>}
+                        {!sidebarCollapsed && <div className="overflow-hidden"><p className="text-xs font-bold text-slate-800 truncate">{currentUser.username}</p><p className="text-[10px] text-slate-500 truncate uppercase">{currentUser.roles[0]}</p></div>}
                     </div>
                     <button onClick={onLogout} className={`w-full flex items-center gap-3 p-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors mb-2 ${sidebarCollapsed ? 'justify-center' : ''}`}>
                         <LogOut size={20} /> {!sidebarCollapsed && <span className="font-medium text-sm">Log Out</span>}
@@ -1467,7 +1912,7 @@
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-20">
                     <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActivePage('Home')}>
-                        <div className="bg-blue-600 text-white p-2 rounded-lg"><Heart size={24} fill="currentColor" /></div>
+                        <img src="icon-512.jpg" alt="Logo" className="w-10 h-10 rounded-lg object-cover" />
                         <div>
                         <span className="font-bold text-xl text-slate-900 tracking-tight block leading-none">Elect Word Ministry</span>
                         <span className="text-xs text-blue-600 font-bold tracking-widest uppercase">Community Church</span>
@@ -1580,183 +2025,8 @@
             );
         };
 
-        const PublicEventsPage = ({ events, setActivePage, onRegisterInterest }) => {
-            const [registerModalOpen, setRegisterModalOpen] = useState(false);
-            const [selectedEvent, setSelectedEvent] = useState(null);
-            const [registrationSuccess, setRegistrationSuccess] = useState(false);
-
-            const regularServices = events.filter(e => e.recurrence === 'weekly');
-            const upcomingEvents = events.filter(e => e.recurrence !== 'weekly');
-
-            const handleRegisterClick = (event) => {
-                setSelectedEvent(event);
-                setRegisterModalOpen(true);
-            };
-
-            const renderEventCard = (event) => {
-                const startDate = new Date(event.startDate);
-                const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`;
-                return (
-                <div key={event.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:shadow-md transition-shadow">
-                    <div className="flex items-start md:items-center gap-6">
-                    <div className="bg-blue-100 text-blue-600 w-16 h-16 rounded-2xl flex flex-col items-center justify-center shrink-0">
-                        <span className="text-xs font-bold uppercase tracking-wider">Date</span>
-                        <span className="font-bold text-xl">{event.recurrence === 'weekly' ? <Repeat size={24}/> : startDate.getDate()}</span>
-                    </div>
-                    <div>
-                        <h3 className="text-xl font-bold text-slate-800">{event.title}</h3>
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-slate-500 mt-1 text-sm">
-                            <span className="flex items-center gap-1">
-                            <Clock size={14} /> 
-                            {event.recurrence === 'weekly' ? `Every ${startDate.toLocaleDateString('en-US', { weekday: 'long' })}` : startDate.toLocaleDateString('en-PH')} at {event.time}
-                            </span>
-                            {event.endDate && event.endDate !== event.startDate && (
-                            <span className="text-xs bg-slate-100 px-1 rounded">to {new Date(event.endDate).toLocaleDateString('en-PH')}</span>
-                            )}
-                            <a href={mapLink} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-blue-600 hover:underline">
-                            <MapPin size={14} /> {event.location}
-                            </a>
-                        </div>
-                    </div>
-                    </div>
-                    <button 
-                    onClick={() => handleRegisterClick(event)}
-                    className="bg-slate-900 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
-                    >
-                        Register Interest
-                    </button>
-                </div>
-                );
-            };
-
-            return (
-                <div className="py-16 bg-slate-50 min-h-[60vh]">
-                <EventRegistrationModal 
-                    isOpen={registerModalOpen} 
-                    onClose={() => setRegisterModalOpen(false)} 
-                    event={selectedEvent}
-                    onRegister={(data) => {
-                    if (onRegisterInterest) onRegisterInterest(data);
-                    setRegistrationSuccess(true);
-                    }}
-                />
-                
-                {registrationSuccess && (
-                    <SuccessToast message="Registration Successful! We'll be in touch." onClose={() => setRegistrationSuccess(false)} />
-                )}
-
-                <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center mb-12">
-                    <h2 className="text-3xl font-bold text-slate-900">Events</h2>
-                    <p className="mt-4 text-slate-600">Join us for our upcoming gatherings and fellowship.</p>
-                    </div>
-
-                    <div className="mb-12">
-                    <h3 className="text-xl font-bold text-slate-800 mb-6 border-l-4 border-blue-500 pl-4">Regular Services</h3>
-                    <div className="space-y-4">
-                        {regularServices.length > 0 ? regularServices.map(renderEventCard) : <p className="text-slate-500 italic">No regular services listed.</p>}
-                    </div>
-                    </div>
-
-                    <div>
-                    <h3 className="text-xl font-bold text-slate-800 mb-6 border-l-4 border-orange-500 pl-4">Upcoming Special Events</h3>
-                    <div className="space-y-4">
-                        {upcomingEvents.length > 0 ? upcomingEvents.map(renderEventCard) : <p className="text-slate-500 italic">No upcoming special events listed at the moment.</p>}
-                    </div>
-                    </div>
-
-                    <div className="mt-12 text-center">
-                    <button onClick={() => setActivePage('Home')} className="text-blue-600 font-medium hover:underline flex items-center justify-center gap-2 mx-auto">
-                        <ArrowRight size={16} className="rotate-180" /> Back to Home
-                    </button>
-                    </div>
-                </div>
-                </div>
-            );
-        };
-
-        const PublicPrayerPage = ({ onAddPrayerRequest }) => {
-            const [request, setRequest] = useState({ name: '', message: '', isAnonymous: false });
-            const [submitted, setSubmitted] = useState(false);
-
-            const handleSubmit = (e) => {
-                e.preventDefault();
-                onAddPrayerRequest({
-                ...request,
-                id: Date.now(),
-                date: new Date().toLocaleDateString('en-PH'),
-                status: 'New'
-                });
-                setSubmitted(true);
-            };
-
-            if (submitted) {
-                return (
-                <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
-                    <div className="bg-green-100 p-4 rounded-full text-green-600 mb-4"><CheckCircle size={48} /></div>
-                    <h2 className="text-2xl font-bold text-slate-800 mb-2">Request Received</h2>
-                    <p className="text-slate-600 max-w-md mb-6">Thank you for sharing. Our prayer team will be lifting this up in prayer.</p>
-                    <button onClick={() => {setSubmitted(false); setRequest({name:'', message:'', isAnonymous:false})}} className="text-blue-600 font-medium hover:underline">Send Another Request</button>
-                </div>
-                );
-            }
-
-            return (
-                <div className="py-16 bg-slate-50 min-h-[60vh]">
-                <div className="max-w-2xl mx-auto px-4">
-                    <div className="text-center mb-10">
-                    <h2 className="text-3xl font-bold text-slate-900">Prayer Requests</h2>
-                    <p className="mt-2 text-slate-600">"Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God."</p>
-                    </div>
-                    
-                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Your Name</label>
-                        <input 
-                            type="text" 
-                            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                            placeholder={request.isAnonymous ? "Anonymous" : "Enter your name"}
-                            disabled={request.isAnonymous}
-                            value={request.name}
-                            onChange={e => setRequest({...request, name: e.target.value})}
-                        />
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                        <input 
-                            type="checkbox" 
-                            id="anon"
-                            checked={request.isAnonymous}
-                            onChange={e => setRequest({...request, isAnonymous: e.target.checked, name: e.target.checked ? '' : request.name})}
-                            className="rounded text-blue-600 focus:ring-blue-500"
-                        />
-                        <label htmlFor="anon" className="text-sm text-slate-600">Keep my request anonymous</label>
-                        </div>
-
-                        <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Prayer Request</label>
-                        <textarea 
-                            required
-                            rows={4}
-                            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                            placeholder="Share your prayer need here..."
-                            value={request.message}
-                            onChange={e => setRequest({...request, message: e.target.value})}
-                        />
-                        </div>
-
-                        <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-900/10">
-                        Submit Prayer Request
-                        </button>
-                    </form>
-                    </div>
-                </div>
-                </div>
-            );
-        };
-
-        const PublicWebsite = ({ onOpenLogin, events, onAddPrayerRequest, onAddRegistration }) => {
+        // NEW: Public Website Component for viewing sermons, etc.
+        const PublicWebsite = ({ onOpenLogin, events, onAddPrayerRequest, onAddRegistration, sermonData }) => { // ADDED sermonData
             const [activePage, setActivePage] = useState('Home');
             const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -1791,6 +2061,7 @@
                 );
                 if (activePage === 'Events') return <PublicEventsPage events={events} setActivePage={setActivePage} onRegisterInterest={onAddRegistration} />;
                 if (activePage === 'Prayer') return <PublicPrayerPage onAddPrayerRequest={onAddPrayerRequest} />;
+                if (activePage === 'Sermons') return <PublicSermonsPage sermonData={sermonData} />; // NEW: Sermons Tab
                 
                 return (
                 <div className="min-h-[60vh] flex flex-col items-center justify-center bg-slate-50 px-4 text-center">
@@ -1839,7 +2110,7 @@
                 <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
                     <div className="p-8 pb-4">
                     <div className="flex items-center gap-2 mb-6 justify-center">
-                        <div className="bg-blue-600 text-white p-2 rounded-lg"><Heart size={24} fill="currentColor" /></div>
+                        <img src="icon-512.jpg" alt="Logo" className="w-12 h-12 rounded-xl object-cover shadow-lg" />
                         <span className="font-bold text-xl text-slate-900">EWM<span className="text-blue-600">Admin</span></span>
                     </div>
                     <h2 className="text-center font-bold text-lg text-slate-800 mb-2">Sign In to Dashboard</h2>
@@ -1891,6 +2162,16 @@
             const [showLogin, setShowLogin] = useState(false);
             const [currentUser, setCurrentUser] = useState(null);
 
+            // NEW: State for Sermons
+            const [sermonData, setSermonData] = useState({ 
+                liveVideoId: '', 
+                apiKey: '', 
+                pastSermons: [
+                    { id: 'dQw4w9WgXcQ', title: 'Sunday Worship Service', date: 'October 15, 2023' },
+                    { id: 'M7lc1UVf-VE', title: 'Midweek Prayer Meeting', date: 'October 12, 2023' }
+                ] 
+            });
+
             const [members, setMembers] = useState([{ id: 1, name: 'Alice Johnson', role: 'Deacon', contact: 'alice@example.com' }]);
             const [transactions, setTransactions] = useState([
                 { id: 1, type: 'income', fundId: 'offering', amount: 5000, description: 'Sunday Tithes', date: '10/24/2023', timestamp: 1698115200000 },
@@ -1907,12 +2188,12 @@
                 { id: 1, name: 'John Doe', message: 'Please pray for my mother\'s surgery next week.', status: 'New', date: '10/27/2023', isAnonymous: false }
             ]);
             const [users, setUsers] = useState([
-                { id: 1, username: 'admin', password: '123', role: 'Pastor' },
-                { id: 2, username: 'treasurer', password: '123', role: 'Church Treasurer' },
-                { id: 3, username: 'youth_lead', password: '123', role: 'Youth Treasurer' },
-                { id: 4, username: 'womens_lead', password: '123', role: "Women's Treasurer" },
-                { id: 5, username: 'mens_lead', password: '123', role: "Men's Treasurer" },
-                { id: 6, username: 'tech', password: '123', role: 'TechSupp' }
+                { id: 1, username: 'admin', password: '123', roles: ['Pastor', 'Admin'] },
+                { id: 2, username: 'treasurer', password: '123', roles: ['Church Treasurer'] },
+                { id: 3, username: 'youth_lead', password: '123', roles: ['Youth Treasurer'] },
+                { id: 4, username: 'womens_lead', password: '123', roles: ["Women's Treasurer"] },
+                { id: 5, username: 'mens_lead', password: '123', roles: ["Men's Treasurer"] },
+                { id: 6, username: 'tech', password: '123', roles: ['TechSupp'] }
             ]);
 
             const handleAddMember = (m) => setMembers([...members, m]);
@@ -1928,6 +2209,16 @@
             const handleAddUser = (u) => setUsers([...users, u]);
             const handleUpdateUser = (u) => setUsers(users.map(user => user.id === u.id ? u : user));
             const handleDeleteUser = (id) => setUsers(users.filter(u => u.id !== id));
+
+            // NEW: Sermon Handlers
+            const handleUpdateSermonData = (newData) => setSermonData(prev => ({ ...prev, ...newData }));
+            const handleArchiveSermon = (video) => {
+                setSermonData(prev => ({
+                    ...prev,
+                    liveVideoId: '', // Clear live video
+                    pastSermons: [video, ...prev.pastSermons] // Add to top of history
+                }));
+            };
 
             const handleLogin = (user) => {
                 setCurrentUser(user);
@@ -1949,9 +2240,18 @@
                     prayerRequests={prayerRequests} onUpdatePrayerRequest={handleUpdatePrayerRequest}
                     users={users} onAddUser={handleAddUser} onUpdateUser={handleUpdateUser} onDeleteUser={handleDeleteUser}
                     currentUser={currentUser}
+                    sermonData={sermonData} // PASSING PROPS
+                    onUpdateSermonData={handleUpdateSermonData}
+                    onArchiveSermon={handleArchiveSermon}
                     />
                 ) : (
-                    <PublicWebsite onOpenLogin={() => setShowLogin(true)} events={events} onAddPrayerRequest={handleAddPrayerRequest} onAddRegistration={handleAddRegistration} />
+                    <PublicWebsite 
+                        onOpenLogin={() => setShowLogin(true)} 
+                        events={events} 
+                        onAddPrayerRequest={handleAddPrayerRequest} 
+                        onAddRegistration={handleAddRegistration} 
+                        sermonData={sermonData} // PASSING PROPS
+                    />
                 )}
                 </>
             );

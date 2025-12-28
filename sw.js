@@ -1,9 +1,11 @@
-const CACHE_NAME = 'church-app-v1';
+const CACHE_NAME = 'church-app-v3';
 const urlsToCache = [
   './index.html',
   './manifest.json',
   'https://cdn.tailwindcss.com',
-  'https://unpkg.com/@babel/standalone/babel.min.js'
+  'https://unpkg.com/@babel/standalone/babel.min.js',
+  'https://html2canvas.hertzen.com/dist/html2canvas.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
 ];
 
 self.addEventListener('install', event => {
