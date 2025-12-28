@@ -126,7 +126,6 @@
             );
         };
 
-        // ... (ViewRegistrationsModal, EventRegistrationModal, SuccessToast, EditTransactionModal, EditEventModal, ReportModal, CalendarWidget, AdminSidebarItem, AdminStatCard, CongregationManager, FundsManager, EventsManager, PrayerRequestManager, RoleMultiSelect, UserModal, SettingsManager code remains same)
         const ViewRegistrationsModal = ({ isOpen, onClose, event, registrations }) => {
             if (!isOpen || !event) return null;
             const eventRegistrations = registrations ? registrations.filter(r => r.eventId === event.id) : [];
@@ -2025,7 +2024,182 @@
             );
         };
 
-        // NEW: Public Website Component for viewing sermons, etc.
+        const PublicEventsPage = ({ events, setActivePage, onRegisterInterest }) => {
+            const [registerModalOpen, setRegisterModalOpen] = useState(false);
+            const [selectedEvent, setSelectedEvent] = useState(null);
+            const [registrationSuccess, setRegistrationSuccess] = useState(false);
+
+            const regularServices = events.filter(e => e.recurrence === 'weekly');
+            const upcomingEvents = events.filter(e => e.recurrence !== 'weekly');
+
+            const handleRegisterClick = (event) => {
+                setSelectedEvent(event);
+                setRegisterModalOpen(true);
+            };
+
+            const renderEventCard = (event) => {
+                const startDate = new Date(event.startDate);
+                const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`;
+                return (
+                <div key={event.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-start md:items-center gap-6">
+                    <div className="bg-blue-100 text-blue-600 w-16 h-16 rounded-2xl flex flex-col items-center justify-center shrink-0">
+                        <span className="text-xs font-bold uppercase tracking-wider">Date</span>
+                        <span className="font-bold text-xl">{event.recurrence === 'weekly' ? <Repeat size={24}/> : startDate.getDate()}</span>
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-800">{event.title}</h3>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-slate-500 mt-1 text-sm">
+                            <span className="flex items-center gap-1">
+                            <Clock size={14} /> 
+                            {event.recurrence === 'weekly' ? `Every ${startDate.toLocaleDateString('en-US', { weekday: 'long' })}` : startDate.toLocaleDateString('en-PH')} at {event.time}
+                            </span>
+                            {event.endDate && event.endDate !== event.startDate && (
+                            <span className="text-xs bg-slate-100 px-1 rounded">to {new Date(event.endDate).toLocaleDateString('en-PH')}</span>
+                            )}
+                            <a href={mapLink} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-blue-600 hover:underline">
+                            <MapPin size={14} /> {event.location}
+                            </a>
+                        </div>
+                    </div>
+                    </div>
+                    <button 
+                    onClick={() => handleRegisterClick(event)}
+                    className="bg-slate-900 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
+                    >
+                        Register Interest
+                    </button>
+                </div>
+                );
+            };
+
+            return (
+                <div className="py-16 bg-slate-50 min-h-[60vh]">
+                <EventRegistrationModal 
+                    isOpen={registerModalOpen} 
+                    onClose={() => setRegisterModalOpen(false)} 
+                    event={selectedEvent}
+                    onRegister={(data) => {
+                    if (onRegisterInterest) onRegisterInterest(data);
+                    setRegistrationSuccess(true);
+                    }}
+                />
+                
+                {registrationSuccess && (
+                    <SuccessToast message="Registration Successful! We'll be in touch." onClose={() => setRegistrationSuccess(false)} />
+                )}
+
+                <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-12">
+                    <h2 className="text-3xl font-bold text-slate-900">Events</h2>
+                    <p className="mt-4 text-slate-600">Join us for our upcoming gatherings and fellowship.</p>
+                    </div>
+
+                    <div className="mb-12">
+                    <h3 className="text-xl font-bold text-slate-800 mb-6 border-l-4 border-blue-500 pl-4">Regular Services</h3>
+                    <div className="space-y-4">
+                        {regularServices.length > 0 ? regularServices.map(renderEventCard) : <p className="text-slate-500 italic">No regular services listed.</p>}
+                    </div>
+                    </div>
+
+                    <div>
+                    <h3 className="text-xl font-bold text-slate-800 mb-6 border-l-4 border-orange-500 pl-4">Upcoming Special Events</h3>
+                    <div className="space-y-4">
+                        {upcomingEvents.length > 0 ? upcomingEvents.map(renderEventCard) : <p className="text-slate-500 italic">No upcoming special events listed at the moment.</p>}
+                    </div>
+                    </div>
+
+                    <div className="mt-12 text-center">
+                    <button onClick={() => setActivePage('Home')} className="text-blue-600 font-medium hover:underline flex items-center justify-center gap-2 mx-auto">
+                        <ArrowRight size={16} className="rotate-180" /> Back to Home
+                    </button>
+                    </div>
+                </div>
+                </div>
+            );
+        };
+
+        const PublicPrayerPage = ({ onAddPrayerRequest }) => {
+            const [request, setRequest] = useState({ name: '', message: '', isAnonymous: false });
+            const [submitted, setSubmitted] = useState(false);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                onAddPrayerRequest({
+                ...request,
+                id: Date.now(),
+                date: new Date().toLocaleDateString('en-PH'),
+                status: 'New'
+                });
+                setSubmitted(true);
+            };
+
+            if (submitted) {
+                return (
+                <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
+                    <div className="bg-green-100 p-4 rounded-full text-green-600 mb-4"><CheckCircle size={48} /></div>
+                    <h2 className="text-2xl font-bold text-slate-800 mb-2">Request Received</h2>
+                    <p className="text-slate-600 max-w-md mb-6">Thank you for sharing. Our prayer team will be lifting this up in prayer.</p>
+                    <button onClick={() => {setSubmitted(false); setRequest({name:'', message:'', isAnonymous:false})}} className="text-blue-600 font-medium hover:underline">Send Another Request</button>
+                </div>
+                );
+            }
+
+            return (
+                <div className="py-16 bg-slate-50 min-h-[60vh]">
+                <div className="max-w-2xl mx-auto px-4">
+                    <div className="text-center mb-10">
+                    <h2 className="text-3xl font-bold text-slate-900">Prayer Requests</h2>
+                    <p className="mt-2 text-slate-600">"Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God."</p>
+                    </div>
+                    
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Your Name</label>
+                        <input 
+                            type="text" 
+                            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            placeholder={request.isAnonymous ? "Anonymous" : "Enter your name"}
+                            disabled={request.isAnonymous}
+                            value={request.name}
+                            onChange={e => setRequest({...request, name: e.target.value})}
+                        />
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                        <input 
+                            type="checkbox" 
+                            id="anon"
+                            checked={request.isAnonymous}
+                            onChange={e => setRequest({...request, isAnonymous: e.target.checked, name: e.target.checked ? '' : request.name})}
+                            className="rounded text-blue-600 focus:ring-blue-500"
+                        />
+                        <label htmlFor="anon" className="text-sm text-slate-600">Keep my request anonymous</label>
+                        </div>
+
+                        <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Prayer Request</label>
+                        <textarea 
+                            required
+                            rows={4}
+                            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            placeholder="Share your prayer need here..."
+                            value={request.message}
+                            onChange={e => setRequest({...request, message: e.target.value})}
+                        />
+                        </div>
+
+                        <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-900/10">
+                        Submit Prayer Request
+                        </button>
+                    </form>
+                    </div>
+                </div>
+                </div>
+            );
+        };
+
         const PublicWebsite = ({ onOpenLogin, events, onAddPrayerRequest, onAddRegistration, sermonData }) => { // ADDED sermonData
             const [activePage, setActivePage] = useState('Home');
             const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
